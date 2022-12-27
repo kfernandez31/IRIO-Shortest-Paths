@@ -9,18 +9,30 @@ Just a playground for writing (pseudo)code.
 #define NUM_COARSE_PARTITIONS 25
 #define NUM_FINE_PARTITIONS 9
 
-using plli = std::pair<long long, int>;
+typedef size_t vertex_id_t;
+typedef size_t region_id_t;
+typedef size_t edge_id_t;
+typedef size_t dist_t;
+
+using plli = std::pair<dist_t, edge_id_t>;
 
 const int maxN = 5e5;
 int n, m;
 std::vector<pair<int, int>> adj[maxN + 1];
 
 struct vertex {
-    size_t coarse_region, fine_region;
+    vertex_id_t id;
+    edge_id_t coarse_region, fine_region;
+};
+
+struct edge {
+    dist_t weight;
+    vertex_id_t to;
+
     std::bitset<NUM_COARSE_PARTITIONS> coarse_mask;
     std::bitset<NUM_FINE_PARTITIONS> fine_mask;
-
-    bool is_reachable(size_t region, bool coarse = true) const {
+    
+    bool is_reachable_within_shortest(const region_id_t region, const bool coarse = true) const {
         if (coarse) {
             return coarse_mask.test(region);
         } else {
@@ -34,12 +46,29 @@ struct Graph {
     
 };
 
-std::pair<long long, std::vector<int>> dijkstra(int src, int dest) {
-    std::vector<int> parent(0, n + 1);
-    std::vector<long long> dist(INF, n + 1);
+std::vector<vertex_id_t> retrieve_path(
+    const vertex_id_t src, 
+    const vertex_id_t dst, 
+    const std::vector<vertex_id_t>& parent, 
+    const std::vector<dist_t>& dist
+) {
+    std::vector<vertex_id_t> path;
+    if (dist[dst] != INF || src == dst) {
+        for (int v = dst; v != src; v = parent[v]) {
+            path.push_back(v);
+        }
+        path.push_back(src);
+        std::reverse(path.begin(), path.end());
+    }
+    return path;
+}
+
+std::pair<dist_t, std::vector<edge_id_t>> dijkstra(edge_id_t src, edge_id_t dst) {
+    std::vector<edge_id_t> parent(0, n + 1);
+    std::vector<dist_t> dist(INF, n + 1);
     std::priority_queue<plli, std::vector<plli>, std::greater<plli>> pq;
 
-    for (int i = 1; i <= n; i++) {
+    for (edge_id_t i = 1; i <= n; i++) {
         dist[i] = (i != src) * INF;
         parent[i] = 0;
     }
@@ -50,7 +79,7 @@ std::pair<long long, std::vector<int>> dijkstra(int src, int dest) {
         pq.pop();
 
         if (d_v != dist[v])
-            continue; // TODO: why?
+            continue; // pair is outdated
 
         for (auto [to, len] : adj[v]) {
             if (dist[v] + len < dist[to]) {
@@ -60,17 +89,9 @@ std::pair<long long, std::vector<int>> dijkstra(int src, int dest) {
             }
         }
     }
-
-    std::vector<int> path;
-    if (dist[dest] != INF) {
-        for (int v = dest; v != src; v = parent[v]) {
-            path.push_back(v);
-        }
-        path.push_back(src);
-        std::reverse(path.begin(), path.end());
-    }
-
-    return {dist[dest], path};
+    
+    auto path = retrieve_path(src, dst, parent, dist);
+    return {dist[dst], path};
 }
 
 int main() {
@@ -84,13 +105,13 @@ int main() {
         adj[b].push_back({w, a});
     }
 
-    int src, dest;
-    cin >> src >> dest;
+    vertex_id_t src, dst;
+    cin >> src >> dst;
 
-    auto res = dijkstra(src, dest);
+    auto res = dijkstra(src, dst);
 
     cout << res.first << "\n";
-    for (int v : res.second) {
+    for (auto v : res.second) {
         cout << v << " ";
     }
     cout << "\n";
