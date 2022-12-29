@@ -10,6 +10,7 @@
 #define INF LLONG_MAX
 #define NUM_COARSE_PARTITIONS 25
 #define NUM_FINE_PARTITIONS 9
+#define PLACEHOLDER_VERTEX_ID 0
 
 typedef size_t vertex_id_t;
 typedef size_t region_id_t;
@@ -39,7 +40,10 @@ struct graph {
 
     struct vertex {
         region_id_t coarse_region_id, fine_region_id;
-        std::vector<edge> adj;
+
+        vertex(region_id_t coarse_region_id, region_id_t fine_region_id): coarse_region_id(coarse_region_id), fine_region_id(fine_region_id) {}
+
+        vertex(): vertex(PLACEHOLDER_VERTEX_ID, PLACEHOLDER_VERTEX_ID) {}
     };
 
     std::vector<std::vector<edge>> adj;
@@ -47,6 +51,7 @@ struct graph {
 
     graph(vertex_id_t n) {
         adj = std::vector<std::vector<edge>>(n);
+        vertices = std::vector<vertex>(n);
     }
 
     inline void add_edge(dist_t weight, vertex_id_t a, vertex_id_t b) {
@@ -54,8 +59,8 @@ struct graph {
         adj[b].push_back({weight, a});
     }
 
-    inline vertex& get_vertex(vertex_id_t id) {
-        return vertices[id];
+    void preprocess() {
+        // TODO
     }
 
     std::vector<vertex_id_t> retrieve_path(
@@ -80,7 +85,7 @@ struct graph {
         std::vector<dist_t> dist(INF, vertices.size());
         std::priority_queue<pdv, std::vector<pdv>, std::greater<pdv>> pq;
 
-        vertex dst_vertex = get_vertex(dst_id);
+        vertex dst_vertex = vertices[dst_id];
 
         dist[src_id] = 0;
         pq.push({0, src_id});
@@ -93,7 +98,7 @@ struct graph {
                 continue; // pair is outdated
 
             for (const edge& e : adj[v]) {
-                vertex to_vertex = get_vertex(e.to);
+                vertex to_vertex = vertices[e.to];
                 if (e.is_reachable_within_shortest_path(dst_vertex.coarse_region_id)) {
                     if ((to_vertex.coarse_region_id != dst_vertex.coarse_region_id) || 
                         (to_vertex.coarse_region_id == dst_vertex.coarse_region_id && 
@@ -109,6 +114,7 @@ struct graph {
             }
         }
         }
+        
         auto path = retrieve_path(src_id, dst_id, parent, dist);
         return {dist[dst_id], path};
     }
