@@ -21,18 +21,27 @@ option objc_class_prefix = "DIJ";
 package dijkstra;
 
 // The length service definition.
-service EdgeLen {
+service DijkstraMainWorker {
   // Sends a greeting
-  rpc CheckLen (LenQuery) returns (LenReply) {}
+  rpc hello_and_get_sector (Address) returns (SectorReply) {}
+  rpc job_stream (Address) returns (stream Job) {}
 }
 
 // The request containing path length query.
-message LenQuery {
-  int32 v1 = 1;
-  int32 v2 = 2;
+message Address {
+  string v1 = 1;
 }
 
 // The response message containing length of edge.
-message LenReply {
-  int32 len = 1;
+message SectorReply {
+  int32 sector_num = 1;
+}
+
+message Job { //@TODO packit  
+  int32 type_of_job = 0;  //0 for starters, 1 for being in the middle, @TODO change for some enum
+  int32 start_edge = 1; // used for starters only
+  int32 end_edge =2; 
+  int32 end_edge_region = 3;
+  int32 job_id =4;
+  int32 
 }
