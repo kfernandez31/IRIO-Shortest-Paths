@@ -122,7 +122,7 @@ private:
   std::shared_ptr<std::vector<dist_t>> dist;
 };
 
-void RunWorker(RegionProcessorServiceImpl service, std::string addr) {
+void RunWorker(std::shared_ptr<RegionProcessorServiceImpl> service, std::string addr) {
   grpc::EnableDefaultHealthCheckService(true);
   grpc::reflection::InitProtoReflectionServerBuilderPlugin();
   ServerBuilder builder;
@@ -130,10 +130,10 @@ void RunWorker(RegionProcessorServiceImpl service, std::string addr) {
   builder.AddListeningPort(server_addr, grpc::InsecureServerCredentials());
   // Register "service" as the instance through which we'll communicate with
   // clients. In this case it corresponds to an *synchronous* service.
-  builder.RegisterService(&service);
+  builder.RegisterService(service.get());
   // Finally assemble the server.
   std::unique_ptr<Server> server(builder.BuildAndStart());
-  std::cout << "Worker #" << service.region <<  " listening on " << addr << std::endl;
+  std::cout << "Worker #" << service->region <<  " listening on " << addr << std::endl;
 
   // Wait for the server to shutdown. Note that some other thread must be
   // responsible for shutting down the server for this call to ever return.
@@ -150,7 +150,7 @@ int main(int argc, char** argv) {
   std::vector<pdv_t> adj6 = {{1, 7}, {6, 8}, {2, 5}};
   std::vector<pdv_t> adj7 = {{8, 0}, {11, 1}, {7, 8}};
   std::vector<pdv_t> adj8 = {{2, 2}, {7, 7}, {6, 6}};
-  graph_t graph = {adj0, adj1, adj2, adj3, adj4, adj5, adj6, adj7, adj8);
+  graph_t graph = {adj0, adj1, adj2, adj3, adj4, adj5, adj6, adj7, adj8};
   auto shared_graph = std::make_shared<graph_t>(std::move(graph));
   auto pq = std::make_shared<maxheap_t>();
   auto parents = std::make_shared<std::vector<vertex_id_t>>(NUM_REGIONS, -1);
@@ -158,9 +158,9 @@ int main(int argc, char** argv) {
 
   std::vector<std::thread> workers;
   for (region_id_t i = 0; i < NUM_REGIONS; i++) {
-    auto service = RegionProcessorServiceImpl(i, shared_graph, pq, parents, dist);
+    auto service_ptr = std::make_shared<RegionProcessorServiceImpl>(i, shared_graph, pq, parents, dist);
     auto addr = server_addr + ":" + std::to_string(base_port + i);
-    workers.push_back(std::thread(RunWorker, std::move(service), addr));
+    workers.push_back(std::thread(RunWorker, service_ptr, addr));
   }
 
   for (auto& worker : workers) {
