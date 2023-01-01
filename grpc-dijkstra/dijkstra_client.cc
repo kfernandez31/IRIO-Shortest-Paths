@@ -18,11 +18,10 @@ using dijkstra::DijkstraReply;
 
 class DijkstraClient {
 public:
-  DijkstraClient(
-    std::map<region_id_t, std::shared_ptr<Channel>>& channels
-  ) {
+  DijkstraClient() {
     for (region_id_t i = 0; i < NUM_REGIONS; i++) {
-      processors[i] = RegionProcessor::NewStub(channels[i]);
+      auto addr = server_addr + ":" + std::to_string(base_port + i);
+      processors[i] = RegionProcessor::NewStub(grpc::CreateChannel(addr, grpc::InsecureChannelCredentials()));
     }
   }
 
@@ -58,13 +57,7 @@ private:
 };
 
 int main(int argc, char** argv) {
-  std::map<region_id_t, Channel> channels; // a routing map
-  for (region_id_t i = 0; i < NUM_REGIONS; i++) {
-    auto addr = server_addr + ":" + std::to_string(base_port + i);
-    channels[i] = grpc::CreateChannel(addr, grpc::InsecureChannelCredentials());
-  }
-
-  DijkstraClient client(channels);
+  auto client = DijkstraClient();
 
   for (vertex_id_t src = 0; src <= 8; src++) {
     for (vertex_id_t dst = 0; dst <= 8; dst++) {

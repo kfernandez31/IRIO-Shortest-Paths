@@ -31,7 +31,6 @@ public:
   region_id_t region;
 
   RegionProcessorServiceImpl(
-    std::map<region_id_t, std::shared_ptr<Channel>>& channels,
     region_id_t region, 
     std::shared_ptr<graph_t> graph,
     std::shared_ptr<maxheap_t> pq,
@@ -40,12 +39,12 @@ public:
   ): region(region), graph(graph), pq(pq), parents(parents), dist(dist) {
       for (region_id_t i = 0; i < NUM_REGIONS; i++) {
         if (i != region) { // We don't need a channel to ourselves
-          processors[region] = RegionProcessor::NewStub(channels[region]);
+          auto addr = server_addr + ":" + std::to_string(base_port + i);
+          processors[i] = RegionProcessor::NewStub(grpc::CreateChannel(addr, grpc::InsecureChannelCredentials()));
         }
       }
     }
 
-  // TODO: derefs
   void try_relax(const pdv_t cur, const pdv_t edge) {
     if ((*dist)[cur.second] + edge.first < (*dist)[edge.second]) {
       (*dist)[edge.second] = cur.first + edge.first;
@@ -54,7 +53,6 @@ public:
     }
   }
 
-  // TODO: derefs
   path_t retrieve_path(const vertex_id_t src, const vertex_id_t dst) const {
     std::vector<vertex_id_t> path;
     if ((*dist)[dst] != INFTY || src == dst) {
@@ -78,8 +76,8 @@ public:
     std::cout << "[Worker #" << region << "]: starting Dijkstra..." << std::endl;
 
     while (!pq->empty()) {
-      auto top = pq->top();
-      auto [d_v, v] = top;
+      auto d_v = pq->top().first;
+      auto v = pq->top().second;
       pq->pop();
 
       if (d_v != (*dist)[v])
@@ -88,7 +86,7 @@ public:
       if (region == get_region(v)) {
         for (const auto& edge : (*graph)[v]) {
           pq->pop();
-          try_relax(top, edge);
+          try_relax({d_v, v}, edge);
         }
       } else {
         DijkstraQuery q;
@@ -107,11 +105,11 @@ public:
 
     if (is_first_processor) {
       path_t path = retrieve_path(src, dst);
-      dist_t dist = (*dist)[(size_t)dst];
+      dist_t d = (*dist)[dst];
       for (vertex_id_t v : path) {
         reply->add_path(v);
       }
-      reply->set_dist(dist);
+      reply->set_dist(d);
     }
     return Status::OK;
   }
@@ -143,31 +141,26 @@ void RunWorker(RegionProcessorServiceImpl service, std::string addr) {
 }
 
 int main(int argc, char** argv) {
-  auto graph = std::make_shared<graph_t>({
-    {{4, 1}, {8, 7}}, 
-    {{11, 7},  {8, 2}, {4, 0}}, 
-    {{8, 1}, {2, 8}, {4, 5}},
-    {{7, 2}, {14, 5}, {9, 4}},
-    {{9, 3}, {10, 5}},
-    {{2, 6}, {14, 3}, {10, 4}},
-    {{1, 7}, {6, 8}, {2, 5}},
-    {{8, 0}, {11, 1}, {7, 8}},
-    {{2, 2}, {7, 7}, {6, 6}}
-  });
+  std::vector<pdv_t> adj0 = {{4, 1}, {8, 7}};
+  std::vector<pdv_t> adj1 = {{11, 7},  {8, 2}, {4, 0}};
+  std::vector<pdv_t> adj2 = {{8, 1}, {2, 8}, {4, 5}};
+  std::vector<pdv_t> adj3 = {{7, 2}, {14, 5}, {9, 4}};
+  std::vector<pdv_t> adj4 = {{9, 3}, {10, 5}};
+  std::vector<pdv_t> adj5 = {{2, 6}, {14, 3}, {10, 4}};
+  std::vector<pdv_t> adj6 = {{1, 7}, {6, 8}, {2, 5}};
+  std::vector<pdv_t> adj7 = {{8, 0}, {11, 1}, {7, 8}};
+  std::vector<pdv_t> adj8 = {{2, 2}, {7, 7}, {6, 6}};
+  graph_t graph = {adj0, adj1, adj2, adj3, adj4, adj5, adj6, adj7, adj8);
+  auto shared_graph = std::make_shared<graph_t>(std::move(graph));
   auto pq = std::make_shared<maxheap_t>();
   auto parents = std::make_shared<std::vector<vertex_id_t>>(NUM_REGIONS, -1);
   auto dist = std::make_shared<std::vector<dist_t>>(NUM_REGIONS, INFTY);
-    
-  std::map<region_id_t, Channel>> channels; // a routing map
-  for (region_id_t i = 0; i < NUM_REGIONS; i++) {
-    auto addr = server_addr + ":" + std::to_string(base_port + i);
-    channels[i] = grpc::CreateChannel(addr, grpc::InsecureChannelCredentials());
-  }
 
   std::vector<std::thread> workers;
   for (region_id_t i = 0; i < NUM_REGIONS; i++) {
-    auto service = RegionProcessorServiceImpl(channels, region, graph, pq, parents, dist);
-    workers.push_back(RunWorker, std::move(service), addresses[i]);
+    auto service = RegionProcessorServiceImpl(i, shared_graph, pq, parents, dist);
+    auto addr = server_addr + ":" + std::to_string(base_port + i);
+    workers.push_back(std::thread(RunWorker, std::move(service), addr));
   }
 
   for (auto& worker : workers) {

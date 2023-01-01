@@ -8,13 +8,13 @@ option objc_class_prefix = "DIJ";
 //TODO: "Query" vs "Request", "Reply" vs "Response"
 
 // Checks legality of vertices in the request
-service QueryVerificator {
-  rpc Verify (ShortestPathQuery) returns (QueryVerificatorReply);
-}
+//service QueryVerificator {
+//  rpc Verify (ShortestPathQuery) returns (QueryVerificatorReply);
+//}
 
-service Router {
-  rpc Route (ShortestPathQuery) returns (RouterReply);
-}
+//service Router {
+//  rpc Route (ShortestPathQuery) returns (RouterReply);
+//}
 
 service RegionProcessor {
   rpc Dijkstra (DijkstraQuery) returns (DijkstraReply);
