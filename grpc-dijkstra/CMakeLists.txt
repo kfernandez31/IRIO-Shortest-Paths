@@ -58,7 +58,7 @@ target_link_libraries(dijkstra_grpc_proto
 
 # Targets greeter_[async_](client|server)
 foreach(_target
-  dijkstra_client dijkstra_server)
+  dijkstra_worker)
   add_executable(${_target} "${_target}.cc")
   target_link_libraries(${_target}
     dijkstra_grpc_proto

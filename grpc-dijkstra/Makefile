@@ -56,17 +56,6 @@ CMAKE_BINARY_DIR = /home/wladekp/irio/IRIO-Shortest-Paths/grpc-dijkstra
 #=============================================================================
 # Targets provided globally by CMake.
 
-# Special rule for the target edit_cache
-edit_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
-	/usr/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
-.PHONY : edit_cache
-
-# Special rule for the target edit_cache
-edit_cache/fast: edit_cache
-
-.PHONY : edit_cache/fast
-
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
@@ -77,6 +66,17 @@ rebuild_cache:
 rebuild_cache/fast: rebuild_cache
 
 .PHONY : rebuild_cache/fast
+
+# Special rule for the target edit_cache
+edit_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
+	/usr/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
+.PHONY : edit_cache
+
+# Special rule for the target edit_cache
+edit_cache/fast: edit_cache
+
+.PHONY : edit_cache/fast
 
 # The main all target
 all: cmake_check_build_system
@@ -111,30 +111,17 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named dijkstra_server
+# Target rules for targets named dijkstra_worker
 
 # Build rule for target.
-dijkstra_server: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 dijkstra_server
-.PHONY : dijkstra_server
+dijkstra_worker: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 dijkstra_worker
+.PHONY : dijkstra_worker
 
 # fast build rule for target.
-dijkstra_server/fast:
-	$(MAKE) -f CMakeFiles/dijkstra_server.dir/build.make CMakeFiles/dijkstra_server.dir/build
-.PHONY : dijkstra_server/fast
-
-#=============================================================================
-# Target rules for targets named dijkstra_client
-
-# Build rule for target.
-dijkstra_client: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 dijkstra_client
-.PHONY : dijkstra_client
-
-# fast build rule for target.
-dijkstra_client/fast:
-	$(MAKE) -f CMakeFiles/dijkstra_client.dir/build.make CMakeFiles/dijkstra_client.dir/build
-.PHONY : dijkstra_client/fast
+dijkstra_worker/fast:
+	$(MAKE) -f CMakeFiles/dijkstra_worker.dir/build.make CMakeFiles/dijkstra_worker.dir/build
+.PHONY : dijkstra_worker/fast
 
 #=============================================================================
 # Target rules for targets named dijkstra_grpc_proto
@@ -203,59 +190,32 @@ dijkstra.pb.cc.s:
 	$(MAKE) -f CMakeFiles/dijkstra_grpc_proto.dir/build.make CMakeFiles/dijkstra_grpc_proto.dir/dijkstra.pb.cc.s
 .PHONY : dijkstra.pb.cc.s
 
-dijkstra_client.o: dijkstra_client.cc.o
+dijkstra_worker.o: dijkstra_worker.cc.o
 
-.PHONY : dijkstra_client.o
-
-# target to build an object file
-dijkstra_client.cc.o:
-	$(MAKE) -f CMakeFiles/dijkstra_client.dir/build.make CMakeFiles/dijkstra_client.dir/dijkstra_client.cc.o
-.PHONY : dijkstra_client.cc.o
-
-dijkstra_client.i: dijkstra_client.cc.i
-
-.PHONY : dijkstra_client.i
-
-# target to preprocess a source file
-dijkstra_client.cc.i:
-	$(MAKE) -f CMakeFiles/dijkstra_client.dir/build.make CMakeFiles/dijkstra_client.dir/dijkstra_client.cc.i
-.PHONY : dijkstra_client.cc.i
-
-dijkstra_client.s: dijkstra_client.cc.s
-
-.PHONY : dijkstra_client.s
-
-# target to generate assembly for a file
-dijkstra_client.cc.s:
-	$(MAKE) -f CMakeFiles/dijkstra_client.dir/build.make CMakeFiles/dijkstra_client.dir/dijkstra_client.cc.s
-.PHONY : dijkstra_client.cc.s
-
-dijkstra_server.o: dijkstra_server.cc.o
-
-.PHONY : dijkstra_server.o
+.PHONY : dijkstra_worker.o
 
 # target to build an object file
-dijkstra_server.cc.o:
-	$(MAKE) -f CMakeFiles/dijkstra_server.dir/build.make CMakeFiles/dijkstra_server.dir/dijkstra_server.cc.o
-.PHONY : dijkstra_server.cc.o
+dijkstra_worker.cc.o:
+	$(MAKE) -f CMakeFiles/dijkstra_worker.dir/build.make CMakeFiles/dijkstra_worker.dir/dijkstra_worker.cc.o
+.PHONY : dijkstra_worker.cc.o
 
-dijkstra_server.i: dijkstra_server.cc.i
+dijkstra_worker.i: dijkstra_worker.cc.i
 
-.PHONY : dijkstra_server.i
+.PHONY : dijkstra_worker.i
 
 # target to preprocess a source file
-dijkstra_server.cc.i:
-	$(MAKE) -f CMakeFiles/dijkstra_server.dir/build.make CMakeFiles/dijkstra_server.dir/dijkstra_server.cc.i
-.PHONY : dijkstra_server.cc.i
+dijkstra_worker.cc.i:
+	$(MAKE) -f CMakeFiles/dijkstra_worker.dir/build.make CMakeFiles/dijkstra_worker.dir/dijkstra_worker.cc.i
+.PHONY : dijkstra_worker.cc.i
 
-dijkstra_server.s: dijkstra_server.cc.s
+dijkstra_worker.s: dijkstra_worker.cc.s
 
-.PHONY : dijkstra_server.s
+.PHONY : dijkstra_worker.s
 
 # target to generate assembly for a file
-dijkstra_server.cc.s:
-	$(MAKE) -f CMakeFiles/dijkstra_server.dir/build.make CMakeFiles/dijkstra_server.dir/dijkstra_server.cc.s
-.PHONY : dijkstra_server.cc.s
+dijkstra_worker.cc.s:
+	$(MAKE) -f CMakeFiles/dijkstra_worker.dir/build.make CMakeFiles/dijkstra_worker.dir/dijkstra_worker.cc.s
+.PHONY : dijkstra_worker.cc.s
 
 # Help Target
 help:
@@ -263,10 +223,9 @@ help:
 	@echo "... all (the default if no target is provided)"
 	@echo "... clean"
 	@echo "... depend"
-	@echo "... edit_cache"
-	@echo "... dijkstra_server"
 	@echo "... rebuild_cache"
-	@echo "... dijkstra_client"
+	@echo "... edit_cache"
+	@echo "... dijkstra_worker"
 	@echo "... dijkstra_grpc_proto"
 	@echo "... dijkstra.grpc.pb.o"
 	@echo "... dijkstra.grpc.pb.i"
@@ -274,12 +233,9 @@ help:
 	@echo "... dijkstra.pb.o"
 	@echo "... dijkstra.pb.i"
 	@echo "... dijkstra.pb.s"
-	@echo "... dijkstra_client.o"
-	@echo "... dijkstra_client.i"
-	@echo "... dijkstra_client.s"
-	@echo "... dijkstra_server.o"
-	@echo "... dijkstra_server.i"
-	@echo "... dijkstra_server.s"
+	@echo "... dijkstra_worker.o"
+	@echo "... dijkstra_worker.i"
+	@echo "... dijkstra_worker.s"
 .PHONY : help
 
 
