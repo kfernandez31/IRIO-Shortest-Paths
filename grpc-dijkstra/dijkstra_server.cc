@@ -75,6 +75,11 @@ public:
     auto dst = (vertex_id_t) query->dst_vertex();
     std::cout << "[Worker #" << region << "]: starting Dijkstra..." << std::endl;
 
+    if (is_first_processor) {
+      pq.push({0, src});
+      dist[src] = 0;
+    }
+
     while (!pq->empty()) {
       auto d_v = pq->top().first;
       auto v = pq->top().second;
