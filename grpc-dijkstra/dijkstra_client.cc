@@ -43,7 +43,7 @@ public:
         std::cout << "  NONE!";
       } else {
         std::cout<< "  distance: " << dist << std::endl;
-        std::cout << "path: " << src;
+        std::cout << "  path: " << src;
         for (int i = 1; i < reply.path_size(); i++) {
           std::cout << delimeter << reply.path(i);
         }

@@ -45,26 +45,6 @@ public:
       }
     }
 
-  void try_relax(const pdv_t cur, const pdv_t edge) {
-    if ((*dist)[cur.second] + edge.first < (*dist)[edge.second]) {
-      (*dist)[edge.second] = cur.first + edge.first;
-      (*parents)[edge.second] = cur.second;
-      (*pq).push({(*dist)[edge.second], edge.second});
-    }
-  }
-
-  path_t retrieve_path(const vertex_id_t src, const vertex_id_t dst) const {
-    std::vector<vertex_id_t> path;
-    if ((*dist)[dst] != INFTY || src == dst) {
-      for (vertex_id_t v = dst; v != src; v = (*parents)[v]) {
-        path.push_back(v);
-      }
-      path.push_back(src);
-      std::reverse(path.begin(), path.end()); //TODO: make this unnecessary
-    }
-    return path;
-  }
-
   Status Dijkstra(
     ServerContext* context, 
     const DijkstraQuery* query, 
@@ -73,27 +53,34 @@ public:
     auto is_first_processor = (bool) query->is_first_processor();
     auto src = (vertex_id_t) query->src_vertex();
     auto dst = (vertex_id_t) query->dst_vertex();
-    std::cout << "[Worker #" << region << "]: starting Dijkstra..." << std::endl;
 
     if (is_first_processor) {
-      pq.push({0, src});
-      dist[src] = 0;
+      log("starting Dijkstra...");
+      pq->push({0, src});
+      (*dist)[src] = 0;
     }
+
+    log(std::string("dijkstra(") + std::to_string(src) + "," + std::to_string(dst) + ")");
 
     while (!pq->empty()) {
       auto d_v = pq->top().first;
       auto v = pq->top().second;
-      pq->pop();
 
-      if (d_v != (*dist)[v])
+      if (d_v != (*dist)[v]) {
+        log(std::string("pop(") + std::to_string(d_v) + "," + std::to_string(v) + ") - outdated");
+        pq->pop();
         continue; // pair is outdated
+      }
         
       if (region == get_region(v)) {
+        log("yay, my region :)");
+        log(std::string("pop(") + std::to_string(d_v) + "," + std::to_string(v) + ")");
+        pq->pop();
         for (const auto& edge : (*graph)[v]) {
-          pq->pop();
           try_relax({d_v, v}, edge);
         }
       } else {
+        log("not my region :(");
         DijkstraQuery q;
         q.set_is_first_processor(false);
         q.set_src_vertex(v);
@@ -120,6 +107,31 @@ public:
   }
 
 private:
+
+  void log(const std::string& message) { //TODO: delete this
+    std::cout << "[Worker #" << region << "]: " << message << std::endl;
+  }
+
+    void try_relax(const pdv_t cur, const pdv_t edge) {
+    if ((*dist)[cur.second] + edge.first < (*dist)[edge.second]) {
+      (*dist)[edge.second] = cur.first + edge.first;
+      (*parents)[edge.second] = cur.second;
+      (*pq).push({(*dist)[edge.second], edge.second});
+    }
+  }
+
+  path_t retrieve_path(const vertex_id_t src, const vertex_id_t dst) const {
+    std::vector<vertex_id_t> path;
+    if ((*dist)[dst] != INFTY || src == dst) {
+      for (vertex_id_t v = dst; v != src; v = (*parents)[v]) {
+        path.push_back(v);
+      }
+      path.push_back(src);
+      std::reverse(path.begin(), path.end()); //TODO: make this unnecessary
+    }
+    return path;
+  }
+
   std::map<region_id_t, std::unique_ptr<RegionProcessor::Stub>> processors;
   std::shared_ptr<graph_t> graph;
   std::shared_ptr<maxheap_t> pq;
@@ -132,7 +144,7 @@ void RunWorker(std::shared_ptr<RegionProcessorServiceImpl> service, std::string 
   grpc::reflection::InitProtoReflectionServerBuilderPlugin();
   ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
-  builder.AddListeningPort(server_addr, grpc::InsecureServerCredentials());
+  builder.AddListeningPort(addr, grpc::InsecureServerCredentials());
   // Register "service" as the instance through which we'll communicate with
   // clients. In this case it corresponds to an *synchronous* service.
   builder.RegisterService(service.get());
