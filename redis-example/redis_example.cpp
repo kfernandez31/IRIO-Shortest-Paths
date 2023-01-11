@@ -7,7 +7,6 @@ using namespace sw::redis;
 
 /*
 g++ -std=c++20 -o redis_example redis_example.cpp ~/repos/redis-plus-plus/build/libredis++.a ~/repos/hiredis/libhiredis.a -pthread
-`allkeys-lru` - policy to remove any keys when `maxmemory` is exceeded
 */
 
 static inline std::string to_redis_key(int src, int dst) {
@@ -22,7 +21,7 @@ int dijkstra(int src, int dst) {
 int main() {
     ConnectionOptions opts;
     opts.host = "127.0.0.1";
-    opts.port = 6739;
+    opts.port = 7777;
     auto redis = Redis(opts);
 
     int src = 21, dst = 37;
