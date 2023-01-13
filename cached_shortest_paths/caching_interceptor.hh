@@ -9,11 +9,10 @@
 class CachingInterceptor : public grpc::experimental::Interceptor {
 public:
     CachingInterceptor(grpc::experimental::ClientRpcInfo* info);
-    void Intercept(::grpc::experimental::InterceptorBatchMethods* methods) override;
-
+    void Intercept(grpc::experimental::InterceptorBatchMethods* methods) override;
 private:
-    static std::optional<int> get_in_cache(int source, int destination);
-    static void set_in_cache(int source, int destination, int distance);
+    std::optional<int> get_in_cache(int source, int destination);
+    void set_in_cache(int source, int destination, int distance);
     grpc::ClientContext context_;
     std::unique_ptr<shortestpaths::Router::Stub> stub_;
     std::unique_ptr<grpc::ClientReaderWriter<shortestpaths::ShortestPathRequest, shortestpaths::ShortestPathResponse>> stream_;
