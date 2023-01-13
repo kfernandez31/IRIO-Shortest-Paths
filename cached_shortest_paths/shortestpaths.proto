@@ -1,0 +1,16 @@
+syntax = "proto3";
+package shortestpaths;
+
+service Router {
+    rpc GetShortestPaths (stream ShortestPathRequest) returns (stream ShortestPathResponse) {}
+}
+
+message ShortestPathRequest {
+    int32 source = 1;
+    int32 destination = 2;
+}
+
+message ShortestPathResponse {
+    int32 distance = 1;
+    //repeated int32 path = 2; TODO!
+}
