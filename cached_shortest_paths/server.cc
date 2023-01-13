@@ -17,13 +17,7 @@ using shortestpaths::Router;
 using shortestpaths::ShortestPathRequest;
 using shortestpaths::ShortestPathResponse;
 
-static std::map<std::pair<int, int>, int> storage = {
-    {std::make_pair(1, 1), 0},
-    {std::make_pair(1, 2), 1},
-    {std::make_pair(1, 3), 2},
-    {std::make_pair(1, 4), 3},
-    {std::make_pair(1, 5), 4},
-};
+static std::map<std::pair<int, int>, int> storage;
 
 static int get_value_from_storage(int source, int destination) {
     return storage[std::make_pair(source, destination)];
@@ -62,6 +56,12 @@ static void RunServer() {
 }
 
 int main(int argc, char** argv) {
+    storage[std::make_pair(1, 1)] = 0;
+    storage[std::make_pair(1, 2)] = 1;
+    storage[std::make_pair(1, 3)] = 2;
+    storage[std::make_pair(1, 4)] = 3;
+    storage[std::make_pair(1, 5)] = 4;
+
     RunServer();
     return 0;
 }

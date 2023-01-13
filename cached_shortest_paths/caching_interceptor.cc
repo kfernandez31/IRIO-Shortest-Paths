@@ -1,11 +1,6 @@
-#include <optional>
+#include "caching_interceptor.hh"
 
-#include <sw/redis++/redis++.h>
-
-#include <grpcpp/support/client_interceptor.h>
-
-#include "shortestpaths.grpc.pb.h"
-
+using namespace sw::redis;
 using namespace grpc::experimental;
 using namespace shortestpaths;
 
@@ -13,26 +8,37 @@ const std::string redis_host = "127.0.0.1";
 const int redis_port = 7777;
 
 static inline std::string to_redis_key(int src, int dst) {
-    return std::to_string(std::min(src, dst)) + "-" + std::to_string(std::max(src, dst));
+    return std::to_string(src) + "-" + std::to_string(dst);
+}
+
+static inline std::string to_redis_val(int dist) {
+    return std::to_string(dist);
 }
 
 std::optional<int> CachingInterceptor::get_in_cache(int src, int dst) {
-    auto val = redis_client_.get(to_redis_key(src, dst);
-    return !val? {} : std::stoi(*val));
+    auto val = redis_client_->get(to_redis_key(src, dst));
+    if (!val) {
+        return std::nullopt;
+    } else {
+        return std::stoi(*val);
+    }
+    
 }
 
 void CachingInterceptor::set_in_cache(int source, int destination, int distance) {
-    redis_client_.set(to_redis_key(source, destination), distance);
+    redis_client_->set(to_redis_key(source, destination), to_redis_val(distance));
 }
 
 CachingInterceptor::CachingInterceptor(ClientRpcInfo* info) {
-    ConnectionOptions opts;
+    sw::redis::ConnectionOptions opts;
     opts.host = redis_host;
     opts.port = redis_port;
-    redis_client_ = sw::redis::Redis(opts);
+    redis_client_ = std::make_unique<Redis>(opts);
+
+    set_in_cache(1, 1, 69);
 }
 
-void CachingInterceptor::Intercept(InterceptorBatchMethods* methods) override {
+void CachingInterceptor::Intercept(InterceptorBatchMethods* methods){
     bool hijack = false;
 
     if (methods->QueryInterceptionHookPoint(InterceptionHookPoints::PRE_SEND_INITIAL_METADATA)) {
@@ -40,7 +46,7 @@ void CachingInterceptor::Intercept(InterceptorBatchMethods* methods) override {
         hijack = true;
         // Create a stream on which this interceptor can make requests
         stub_ = Router::NewStub(methods->GetInterceptedChannel());
-        stream_ = stub_->GetValues(&context_);
+        stream_ = stub_->GetShortestPaths(&context_);
     }
     if (methods->QueryInterceptionHookPoint(InterceptionHookPoints::PRE_SEND_MESSAGE)) {
         // We know that clients perform a Read and a Write in a loop, so we don't
@@ -57,38 +63,37 @@ void CachingInterceptor::Intercept(InterceptorBatchMethods* methods) override {
             auto* buffer = methods->GetSerializedSendMessage();
             auto copied_buffer = *buffer;
             GPR_ASSERT(
-                grpc::SerializationTraits<ShortestPathRequest>::Deserialize(
-                    &copied_buffer, &req_msg)
-                    .ok());
-            source = req_msg->source();
-            destination = req_msg->destination();
+                grpc::SerializationTraits<ShortestPathRequest>::Deserialize(&copied_buffer, &req_msg).ok()
+            );
+            source = req_msg.source();
+            destination = req_msg.destination();
         }
 
         // Check if the key is present in the map
         auto search = get_in_cache(source, destination);
         if (search) {
-            std::cout << "Key " << "(" << source << ", " << destination << ") found in cache";
+            std::cout << "Key " << "(" << source << ", " << destination << ") found in cache!\n";
             response_ = *search;
         } else {
-            std::cout << "Key " << "(" << source << ", " << destination << ") not found in cache";
+            std::cout << "Key " << "(" << source << ", " << destination << ") not found in cache. Pinging server...\n";
             // Key was not found in the cache, so make a request
             ShortestPathRequest req;
             req.set_source(source);
-            req.set_source(destination);
+            req.set_destination(destination);
             stream_->Write(req);
             ShortestPathResponse resp;
             stream_->Read(&resp);
+            response_ = resp.distance();
             // Insert the pair in the cache for future requests
-            insert_to_cache(source, destination, resp.distance());
+            set_in_cache(source, destination, response_);
         }
     }
     if (methods->QueryInterceptionHookPoint(InterceptionHookPoints::PRE_SEND_CLOSE)) {
         stream_->WritesDone();
     }
     if (methods->QueryInterceptionHookPoint(InterceptionHookPoints::PRE_RECV_MESSAGE)) {
-        ShortestPathResponse* resp =
-            static_cast<ShortestPathResponse*>(methods->GetRecvMessage());
-        resp->set_value(response_);
+        ShortestPathResponse* resp = static_cast<ShortestPathResponse*>(methods->GetRecvMessage());
+        resp->set_distance(response_);
     }
     if (methods->QueryInterceptionHookPoint(InterceptionHookPoints::PRE_RECV_STATUS)) {
         auto* status = methods->GetRecvStatus();
@@ -106,6 +111,6 @@ void CachingInterceptor::Intercept(InterceptorBatchMethods* methods) override {
     }
 }
 
-Interceptor* CachingInterceptorFactory::CreateClientInterceptor(ClientRpcInfo* info) override {
+Interceptor* CachingInterceptorFactory::CreateClientInterceptor(ClientRpcInfo* info) {
     return new CachingInterceptor(info);
 }

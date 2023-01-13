@@ -42,7 +42,7 @@ target_link_libraries(shortestpaths_grpc_proto
   ${_PROTOBUF_LIBPROTOBUF})
 
 # client
-add_executable(client "client.cc" "caching_interceptor.hh")
+add_executable(client client.cc caching_interceptor.cc caching_interceptor.hh)
 target_link_libraries(client
 shortestpaths_grpc_proto
   ${_REFLECTION}
@@ -63,7 +63,7 @@ find_library(REDIS_PLUS_PLUS_LIB redis++)
 target_link_libraries(client ${REDIS_PLUS_PLUS_LIB})
 
 # server
-add_executable(server "server.cc")
+add_executable(server server.cc)
 target_link_libraries(server
   shortestpaths_grpc_proto
   ${_REFLECTION}

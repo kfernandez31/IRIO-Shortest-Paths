@@ -16,8 +16,8 @@ private:
     grpc::ClientContext context_;
     std::unique_ptr<shortestpaths::Router::Stub> stub_;
     std::unique_ptr<grpc::ClientReaderWriter<shortestpaths::ShortestPathRequest, shortestpaths::ShortestPathResponse>> stream_;
-    sw::redis::Redis redis_client_;
-    std::string response_;
+    std::unique_ptr<sw::redis::Redis> redis_client_;
+    int response_;
 };
 
 class CachingInterceptorFactory : public grpc::experimental::ClientInterceptorFactoryInterface {
