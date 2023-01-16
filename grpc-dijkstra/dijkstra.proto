@@ -11,10 +11,22 @@ service DijkstraMainWorker {
   // Sends a greeting
   rpc hello_and_get_sector (Address) returns (SectorReply) {}
   rpc job_stream (Address) returns (stream Job) {}
+  rpc path_found (stream PathVert) returns (Ok) {}
 }
 
 service DijkstraWorkerService {
-  rpc new_region_entry (stream Entry) returns (JobEnd) {} 
+  rpc new_region_entry (stream Entry) returns (JobEnd) {}
+  rpc send_path (stream PathVert) returns (Ok) {} 
+}
+
+
+message Ok { 
+}
+
+message PathVert {
+  bool isLastVert = 1; //0 if not last vert, 1 if last vert
+  int64 distance = 2;
+  int32 ver_id = 3;
 }
 
 // The request containing path length query.
