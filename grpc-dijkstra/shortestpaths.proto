@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package shortestpaths;
+
+//TODO: decide on "region" vs "sector" naming convention
+
+// The length service definition.
+service ShortestPathsMainWorker {
+  // Sends a greeting
+  rpc hello_and_get_region (HelloRequest) returns (RegionReply) {}
+  rpc send_jobs_to_neighbors (ContinueJobs) returns (Ok) {}
+  rpc job_stream (Address) returns (stream Job) {}
+  rpc path_found (stream PathVert) returns (Ok) {}
+}
+
+message HelloReply {
+  int32 region_num = 1;
+}
+
+service ShortestPathsWorker {
+  rpc new_region_entry (stream Entry) returns (JobEnd) {}
+  rpc send_path (stream PathVert) returns (Empty) {} 
+}
+
+message PathVert {
+  bool isLastVertex = 1;
+  int64 distance = 2;
+  int32 vertex = 3;
+}
+
+message HelloRequest {}
+
+message JobPayload {
+  required int32 end_vertex = 1 [packed=true]; 
+  required int32 end_vertex_region = 2 [packed=true];
+}
+
+message StartJob {
+// TODO: WE WILL SET THESE FIELDS TO BE CONSTANT IN THE WORKER
+  int32 start_vertex = 1 [packed=true];
+  int32 end_vertex = 2 [packed=true];
+  int32 end_vertex_region = 2 [packed=true];
+}
+
+message ContinueJob {
+  int32 parent = 1 [packed=true];
+  int32 parent_region = 2 [packed=true];
+  int32 child = 3 [packed=true];
+  int32 child_region = 3 [packed=true];
+  int32 parent_to_child_distance = 4 [packed=true];
+}
+
+message ContinueJobs {
+  repeated ContinueJob = 2;
+};
+
+
+//TODO: whats this
+message Entry {
+  required int32 distance = 1 [packed=true];
+  required int32 last_vertex_in_prev_reg = 2 [packed=true];
+  required int32 first_vertex_in_cur_reg = 3 [packed=true];
+  required int32 last_region = 4 [packed=true];
+  required int32 job_id = 5 [packed=true];
+}
+
+
+//message JobEnd {
+//  string siema = 1; //@TODO  
+//}
