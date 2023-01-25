@@ -5,66 +5,77 @@ package shortestpaths;
 //TODO: decide on "region" vs "sector" naming convention
 
 // The length service definition.
-service ShortestPathsMainWorker {
+service ShortestPathsMainService {
   // Sends a greeting
+  rpc client_query (ClientQuery) returns (Ok) {}
   rpc hello_and_get_region (HelloRequest) returns (RegionReply) {}
-  rpc send_jobs_to_neighbors (ContinueJobs) returns (Ok) {}
-  rpc job_stream (Address) returns (stream Job) {}
+  rpc request_job (Address) returns (NewJob) {}
+  rpc request_neighbour_region_addr(Ok) returns (Address) {}
   rpc path_found (stream PathVert) returns (Ok) {}
+  rpc end_of_local_phase(LocalPhaseEnd) returns (Ok) {}
+  rpc end_of_exchange_phase(ExchangePhaseEnd) returns (Ok) {}
 }
 
-message HelloReply {
+message ClientQuery {
+  int32 start_vertex = 1;
+  int32 start_vertex_region = 2;
+  int32 end_vertex = 3;
+  int32 end_vertex_region = 4;
+}
+
+message Address {
+  string addr = 1;
+}
+
+message HelloRequest {
+  string addr = 1;
+}
+
+message Ok {}
+
+message LocalPhaseEnd {
+  bool anything_to_send = 1;
+}
+
+message ExchangePhaseEnd {}
+
+
+message RegionReply {
   int32 region_num = 1;
 }
 
-service ShortestPathsWorker {
-  rpc new_region_entry (stream Entry) returns (JobEnd) {}
-  rpc send_path (stream PathVert) returns (Empty) {} 
+service ShortestPathsWorkerService {
+  rpc begin_new_query (NewJob) returns (Ok) {}
+  rpc send_jobs_to_neighbors (ContinueJobs) returns (Ok) {}
+  rpc begin_next_round (Ok) returns (Ok) {}
+  rpc send_path (stream PathVert) returns (Ok) {} 
 }
 
 message PathVert {
-  bool isLastVertex = 1;
-  int64 distance = 2;
+  bool is_last_vertex = 1;
+  uint64 distance = 2;
   int32 vertex = 3;
 }
 
-message HelloRequest {}
 
-message JobPayload {
-  required int32 end_vertex = 1 [packed=true]; 
-  required int32 end_vertex_region = 2 [packed=true];
-}
+// [packed=true] caused compilation errors, maybe we will add it later, for performance
 
-message StartJob {
-// TODO: WE WILL SET THESE FIELDS TO BE CONSTANT IN THE WORKER
-  int32 start_vertex = 1 [packed=true];
-  int32 end_vertex = 2 [packed=true];
-  int32 end_vertex_region = 2 [packed=true];
+message NewJob {
+  int32 start_vertex = 1;//; [packed=true];
+  int32 end_vertex = 2; //[packed=true];
+  int32 end_vertex_region = 3;// [packed=true];
+  bool is_first = 4;
 }
 
 message ContinueJob {
-  int32 parent = 1 [packed=true];
-  int32 parent_region = 2 [packed=true];
-  int32 child = 3 [packed=true];
-  int32 child_region = 3 [packed=true];
-  int32 parent_to_child_distance = 4 [packed=true];
+  int32 parent = 1;// [packed=true];
+  // int32 parent_region = 2;// [packed=true]; // not used
+  int32 child = 2; // [packed=true];
+  int32 child_region = 3; // [packed=true]; //not used, we know what is our region
+  uint64 distance_to_child = 4; //[packed=true];
 }
 
 message ContinueJobs {
-  repeated ContinueJob = 2;
+  int32 parent_region = 1;
+  repeated ContinueJob job = 2;
 };
-
-
-//TODO: whats this
-message Entry {
-  required int32 distance = 1 [packed=true];
-  required int32 last_vertex_in_prev_reg = 2 [packed=true];
-  required int32 first_vertex_in_cur_reg = 3 [packed=true];
-  required int32 last_region = 4 [packed=true];
-  required int32 job_id = 5 [packed=true];
-}
-
-
-//message JobEnd {
-//  string siema = 1; //@TODO  
-//}

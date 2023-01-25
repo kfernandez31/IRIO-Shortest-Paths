@@ -37,20 +37,24 @@ target_link_libraries(shortestpaths_grpc_proto
   ${_GRPC_GRPCPP}
   ${_PROTOBUF_LIBPROTOBUF})
 
-# client
-add_executable(client client.cc common.hh)
-target_link_libraries(client
-shortestpaths_grpc_proto
-  ${_REFLECTION}
-  ${_GRPC_GRPCPP}
-  ${_PROTOBUF_LIBPROTOBUF}
-  ${REDIS_PLUS_PLUS_LIB})
+add_executable(worker "worker_server.cc" "worker_client.cc" "worker_server.hh" "worker_client.hh" "common.hh" "worker.cc")
+target_link_libraries(worker
+    shortestpaths_grpc_proto
+    ${_REFLECTION}
+    ${_GRPC_GRPCPP}
+    ${_PROTOBUF_LIBPROTOBUF})
 
 
-# server
-add_executable(server server.cc common.hh)
-target_link_libraries(server
-  shortestpaths_grpc_proto
-  ${_REFLECTION}
-  ${_GRPC_GRPCPP}
-  ${_PROTOBUF_LIBPROTOBUF})
+add_executable(main "main_server.cc" "main_client.cc" "main_server.hh" "main_client.hh" "common.hh" "main.cc")
+target_link_libraries(main
+    shortestpaths_grpc_proto
+    ${_REFLECTION}
+    ${_GRPC_GRPCPP}
+    ${_PROTOBUF_LIBPROTOBUF})
+
+add_executable(client_test "client_test.cc")
+target_link_libraries(client_test
+    shortestpaths_grpc_proto
+    ${_REFLECTION}
+    ${_GRPC_GRPCPP}
+    ${_PROTOBUF_LIBPROTOBUF})
