@@ -34,7 +34,7 @@ public:
         worker_stubs_ = std::make_shared<std::map<region_id_t, std::pair<std::unique_ptr<ShortestPathsWorkerService::Stub>, std::string>>>();
         region_number_ = std::make_shared<size_t>(region_number);
         ended_phase_counter_ = std::make_shared<size_t>(0);
-        anything_to_send_ = std::make_shared<bool>(0);
+        anything_to_send_ = std::make_shared<bool>(false);
     }
 
     Status client_query(ServerContext *context, const ClientQuery *client_query, Ok *ok_reply);
@@ -44,7 +44,7 @@ public:
     Status end_of_exchange_phase(ServerContext *context, const ExchangePhaseEnd *HelloRequest, Ok *ok_reply);
 
     void run();
-
+    void retrieve_path_main();
 private:
     std::shared_ptr<std::mutex> mutex_;
     std::shared_ptr<MainComputationPhase> phase_;

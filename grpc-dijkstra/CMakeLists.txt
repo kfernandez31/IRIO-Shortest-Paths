@@ -37,7 +37,7 @@ target_link_libraries(shortestpaths_grpc_proto
   ${_GRPC_GRPCPP}
   ${_PROTOBUF_LIBPROTOBUF})
 
-add_executable(worker "worker_server.cc" "worker_client.cc" "worker_server.hh" "worker_client.hh" "common.hh" "worker.cc")
+add_executable(worker "worker_server.cc" "worker_client.cc" "worker_server.hh" "worker_client.hh" "common.hh" "common.cc" "worker.cc")
 target_link_libraries(worker
     shortestpaths_grpc_proto
     ${_REFLECTION}
@@ -45,7 +45,7 @@ target_link_libraries(worker
     ${_PROTOBUF_LIBPROTOBUF})
 
 
-add_executable(main "main_server.cc" "main_client.cc" "main_server.hh" "main_client.hh" "common.hh" "main.cc")
+add_executable(main "main_server.cc" "main_server.hh" "common.hh" "common.cc" "main.cc")
 target_link_libraries(main
     shortestpaths_grpc_proto
     ${_REFLECTION}

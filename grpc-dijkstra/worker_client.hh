@@ -39,6 +39,10 @@ public:
         const std::shared_ptr<std::mutex> pq_mutex,
         const std::shared_ptr<maxheap_t> pq,
         std::shared_ptr<WorkerComputationPhase> phase,
+        std::shared_ptr<std::map<region_id_t, std::shared_ptr<ShortestPathsWorkerService::Stub>>> neighbors,
+        std::shared_ptr<std::map<vertex_id_t, std::pair<vertex_id_t, region_id_t>>> parents,
+        std::shared_ptr<std::map<vertex_id_t, dist_t>> distances,
+        std::shared_ptr<std::map<vertex_id_t, std::shared_ptr<Vertex>>> my_vertices,
         const std::string& main_address,
         const std::string& own_address
     );
@@ -60,14 +64,14 @@ private:
     
     
     std::shared_ptr<ShortestPathsMainService::Stub> stub_;
-    std::map<region_id_t, std::shared_ptr<ShortestPathsWorkerService::Stub>> neighbors_;
+    std::shared_ptr<std::map<region_id_t, std::shared_ptr<ShortestPathsWorkerService::Stub>>> neighbors_;
     
     //TODO: are these needed?
     std::string address_;
     std::string main_address_;
 
     region_id_t region_;
-    std::map<vertex_id_t, std::shared_ptr<Vertex>> my_vertices_;
+    std::shared_ptr<std::map<vertex_id_t, std::shared_ptr<Vertex>>> my_vertices_;
 
     vertex_id_t destination_;
     region_id_t destination_region_;
@@ -77,8 +81,8 @@ private:
     std::shared_ptr<std::condition_variable> phase_cond_;
 
     std::shared_ptr<maxheap_t> pq_; //todo: fix type
-    std::map<vertex_id_t, vertex_id_t> parents_;
-    std::map<vertex_id_t, dist_t> distances_; // TODO: do we maybe want this to be the same for all of a region's workers?
+    std::shared_ptr<std::map<vertex_id_t, std::pair<vertex_id_t, region_id_t>>> parents_;
+    std::shared_ptr<std::map<vertex_id_t, dist_t>> distances_; // TODO: do we maybe want this to be the same for all of a region's workers?
     std::map<region_id_t, std::vector<ContinueJob>> neighbors_jobs_;
 
     std::shared_ptr<std::atomic_int> if_get_path_then_vertex_id;

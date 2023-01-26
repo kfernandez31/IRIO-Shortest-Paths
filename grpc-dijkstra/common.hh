@@ -4,9 +4,10 @@
 #include <queue>
 #include <map>
 #include <bitset>
-#include "limits.h"
+#include <memory>
+#include <limits>
 
-static constexpr int NUM_PARTITIONS = 1;
+static constexpr int NUM_PARTITIONS = 2;
 
 enum WorkerComputationPhase {
     WAITING_FOR_QUERY = 0,
@@ -42,9 +43,10 @@ class Vertex;
 class Edge {
 public:
     dist_t weight_;
-    std::shared_ptr<Vertex> end_;
+    vertex_id_t end_;
+    region_id_t end_region_;
 
-    Edge(const dist_t weight, const std::shared_ptr<Vertex> end): weight_(weight_), end_(end_) {};
+    Edge(const dist_t weight, const vertex_id_t end,  region_id_t end_region): weight_(weight), end_(end), end_region_(end_region) {};
 
     bool reaches_optimally(const region_id_t region) const
     {
@@ -52,7 +54,7 @@ public:
     }
 
 private:
-    std::bitset<NUM_PARTITIONS> region_mask; //@todo
+    std::bitset<NUM_PARTITIONS> region_mask = std::bitset<NUM_PARTITIONS>("1"); //@todo
 };
 
 class Vertex {
@@ -60,13 +62,19 @@ public:
     vertex_id_t id;
     region_id_t region_;
     std::vector<Edge> edges;
+    Vertex(vertex_id_t _id, region_id_t _region, std::vector<Edge> _edges): id(_id), region_(_region), edges(_edges){};
 };
 
 
 
-using vertex_path_info_t = std::tuple<dist_t, vertex_id_t, vertex_id_t>;
+using vertex_path_info_t = std::tuple<dist_t, vertex_id_t, vertex_id_t, region_id_t>;
 using maxheap_t = std::priority_queue<vertex_path_info_t, std::vector<vertex_path_info_t>, std::greater<vertex_path_info_t>>; 
 using path_t = std::vector<Edge>;
 const region_id_t MAIN_REGION = -1;
 
 static constexpr dist_t INF = std::numeric_limits<dist_t>::max();
+
+
+std::map<vertex_id_t, std::shared_ptr<Vertex>> load_graph(region_id_t region_num);
+
+std::map<region_id_t, std::vector<region_id_t>> load_region_borders();

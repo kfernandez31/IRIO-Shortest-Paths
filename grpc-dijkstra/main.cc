@@ -7,9 +7,7 @@
 #include <grpc/grpc.h>
 #include "shortestpaths.grpc.pb.h"
 
-#include "main_client.hh"
 #include "main_server.hh"
-#include "common.hh"
 #include <iostream>
 #include <memory>
 #include <string>
@@ -34,7 +32,7 @@ int main(int argc, char **argv) {
    //     grpc::CreateChannel(main_server_address, grpc::InsecureChannelCredentials())
     //);
 
-    auto main_server = std::make_shared<ShortestPathsMainServer>(1);
+    auto main_server = std::make_shared<ShortestPathsMainServer>(NUM_PARTITIONS);
 
     auto client_thread = std::thread(&ShortestPathsMainServer::run, &*main_server);
 
