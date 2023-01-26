@@ -9,9 +9,6 @@ service ShortestPathsMainService {
   // Sends a greeting
   rpc client_query (ClientQuery) returns (Ok) {}
   rpc hello_and_get_region (HelloRequest) returns (RegionReply) {}
-  rpc request_job (Address) returns (NewJob) {}
-  rpc request_neighbour_region_addr(Ok) returns (Address) {}
-  rpc path_found (stream PathVert) returns (Ok) {}
   rpc end_of_local_phase(LocalPhaseEnd) returns (Ok) {}
   rpc end_of_exchange_phase(ExchangePhaseEnd) returns (Ok) {}
 }

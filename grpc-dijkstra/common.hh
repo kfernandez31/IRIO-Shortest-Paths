@@ -1,22 +1,30 @@
 #pragma once
 
-
+#include <grpcpp/grpcpp.h>
+#include <grpcpp/ext/proto_server_reflection_plugin.h>
+#include <grpcpp/health_check_service_interface.h>
+#include <grpcpp/server.h>
+#include <grpcpp/server_builder.h>
+#include <grpcpp/server_context.h>
+#include <grpc/grpc.h>
+#include "shortestpaths.grpc.pb.h"
 #include <queue>
 #include <map>
 #include <bitset>
 #include <memory>
 #include <limits>
+#include <condition_variable>
+#include <mutex>
+
+using namespace shortestpaths;
 
 static constexpr int NUM_PARTITIONS = 2;
 
 enum WorkerComputationPhase {
-    WAITING_FOR_QUERY = 0,
-    EXCHANGE_PHASE =1,
-    HANDLE_JOBS=2,
-    END_OF_EXCHANGE = 3,
-    WAIT_FOR_PATH_RETRIEVAL=4,
-    RETRIEVE_PATH=5,
-    STOP_WORK=6 //TODO: will this be ever used?
+    AWAIT_MAIN = 0,
+    HANDLE_JOBS=1,
+    END_OF_EXCHANGE = 2,
+    STOP_WORK=3 //TODO: will this be ever used?
 };
 
 
@@ -54,7 +62,7 @@ public:
     }
 
 private:
-    std::bitset<NUM_PARTITIONS> region_mask = std::bitset<NUM_PARTITIONS>("1"); //@todo
+    std::bitset<NUM_PARTITIONS> region_mask = std::bitset<NUM_PARTITIONS>("11"); //@todo
 };
 
 class Vertex {
@@ -64,8 +72,6 @@ public:
     std::vector<Edge> edges;
     Vertex(vertex_id_t _id, region_id_t _region, std::vector<Edge> _edges): id(_id), region_(_region), edges(_edges){};
 };
-
-
 
 using vertex_path_info_t = std::tuple<dist_t, vertex_id_t, vertex_id_t, region_id_t>;
 using maxheap_t = std::priority_queue<vertex_path_info_t, std::vector<vertex_path_info_t>, std::greater<vertex_path_info_t>>; 
@@ -78,3 +84,20 @@ static constexpr dist_t INF = std::numeric_limits<dist_t>::max();
 std::map<vertex_id_t, std::shared_ptr<Vertex>> load_graph(region_id_t region_num);
 
 std::map<region_id_t, std::vector<region_id_t>> load_region_borders();
+
+
+class WorkerState{
+public:
+    WorkerComputationPhase phase_;
+    std::mutex phase_mutex_;
+    std::condition_variable phase_cond_;
+    size_t notification_counter;
+    maxheap_t pq_;
+    std::map<vertex_id_t, std::pair<vertex_id_t, region_id_t>> parents_;
+    std::map<vertex_id_t, dist_t> distances_; 
+    std::map<vertex_id_t, std::shared_ptr<Vertex>> my_vertices_;
+    std::map<region_id_t, std::shared_ptr<ShortestPathsWorkerService::Stub>> neighbors_;
+    vertex_id_t destination_;
+    region_id_t destination_region_;
+};
+
