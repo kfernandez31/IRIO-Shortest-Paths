@@ -35,8 +35,6 @@ enum MainComputationPhase{
     WAIT_FOR_EXCHANGE = 3, //server --- tutaj dostajemy end_computephase
     EXCHANGE_PHASE_MAIN = 4, 
     RETRIEVE_PATH_MAIN =5,
-    WAIT_FOR_PATH_RETRIEVAL_MAIN = 6,
-    BROADCAST_END_OF_QUERY= 7
 };
 
 
@@ -54,15 +52,19 @@ public:
     vertex_id_t end_;
     region_id_t end_region_;
 
-    Edge(const dist_t weight, const vertex_id_t end,  region_id_t end_region): weight_(weight), end_(end), end_region_(end_region) {};
+    Edge(const dist_t weight, const vertex_id_t end,  region_id_t end_region, std::vector<bool> region_mask): 
+        weight_(weight), 
+        end_(end), 
+        end_region_(end_region), 
+        region_mask_(region_mask) {};
 
     bool reaches_optimally(const region_id_t region) const
     {
-        return region_mask.test(region);
+        return region_mask_[region];
     }
 
 private:
-    std::bitset<NUM_PARTITIONS> region_mask = std::bitset<NUM_PARTITIONS>("11"); //@todo
+    std::vector<bool> region_mask_; //@todo
 };
 
 class Vertex {
@@ -75,8 +77,6 @@ public:
 
 using vertex_path_info_t = std::tuple<dist_t, vertex_id_t, vertex_id_t, region_id_t>;
 using maxheap_t = std::priority_queue<vertex_path_info_t, std::vector<vertex_path_info_t>, std::greater<vertex_path_info_t>>; 
-using path_t = std::vector<Edge>;
-const region_id_t MAIN_REGION = -1;
 
 static constexpr dist_t INF = std::numeric_limits<dist_t>::max();
 

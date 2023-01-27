@@ -23,22 +23,18 @@ using grpc::Status;
 using grpc::ClientWriter;
 
 Status ShortestPathsMainServer::client_query(ServerContext *context, const ClientQuery *client_query, Ok *ok_reply) {
-    std::cout << "BEFORE MUT" << std::endl;
     std::unique_lock<std::mutex> lock(*mutex_);
-    std::cout << "AFTER MUT" << std::endl;
     queries_->push(*client_query);
-    std::cout << "PUSHED QUERY TO QUERY" << std::endl;
     
     if (*phase_ == MainComputationPhase::WAIT_FOR_QUERY) {
-        *phase_ = MainComputationPhase::SEND_QUERY;
-        current_query_ = std::make_shared<ClientQuery>(queries_->front());
-        queries_->pop();
+        this->check_queries();
     }
-    std::cout << "GOT NEW CLIENT QUERY" <<std::endl;
+    std::cerr << "GOT NEW CLIENT QUERY" <<std::endl;
     return Status::OK;
 }
                                                                             // dostajemy adres klienta            odsyłamy numer regionu
 Status ShortestPathsMainServer::hello_and_get_region(ServerContext *context, const HelloRequest *hello_request, RegionReply *region_reply) {
+    std::unique_lock<std::mutex> lock(*mutex_);
     region_id_t region = worker_stubs_->size();
     region_reply->set_region_num(region);
 
@@ -47,45 +43,48 @@ Status ShortestPathsMainServer::hello_and_get_region(ServerContext *context, con
     (*worker_stubs_)[region] = std::make_pair(std::move(stub), hello_request->addr());
     if(worker_stubs_->size() == *region_number_ )
     {
-        *phase_ = MainComputationPhase::WAIT_FOR_QUERY;
-        std::cout << "WE HAVE FULL CREW LETS WAIT FOR QUERY"<<std::endl;
+        this->check_queries();
+        std::cerr << "WE HAVE FULL CREW LETS WAIT FOR QUERY"<<std::endl;
     }
 
-    std::cout << "ASSIGNED REGION " <<region << " TO :" << hello_request->addr() << std::endl;
+    std::cerr << "ASSIGNED REGION " <<region << " TO :" << hello_request->addr() << std::endl;
 
     return Status::OK;
 }
 
-
-Status ShortestPathsMainServer::path_found(ServerContext *context, ServerReader<ContinueJobs> *HelloRequest, Ok *ok_reply) {
-   return Status::OK;
+void ShortestPathsMainServer::check_queries()
+{    
+    if (queries_->empty()){
+        *phase_ = MainComputationPhase::WAIT_FOR_QUERY;
+    }
+    else {
+        *phase_ = MainComputationPhase::SEND_QUERY;
+        (*notification_counter_)++;
+        cond_->notify_one();
+        current_query_ = std::make_shared<ClientQuery>(queries_->front());
+        queries_->pop();
+    }
 }
 
-// //Status ShortestPathsMainServer::request_neighbour_region_addr() {
-
-// }
 
 Status ShortestPathsMainServer::end_of_local_phase(ServerContext *context, const LocalPhaseEnd *local_phase_request, Ok *ok_reply) {
-    std::cout<<"End of local dijkstra phase for one region" <<std::endl;
-    
+    std::unique_lock<std::mutex> lock(*mutex_);
     *ended_phase_counter_ += 1;
     *anything_to_send_ |= local_phase_request->anything_to_send();
     std::cout<<local_phase_request->anything_to_send()<<std::endl;
     std::cout<<*ended_phase_counter_ << "  " << *region_number_<<std::endl;
     if (*ended_phase_counter_ == *region_number_) {
-        *ended_phase_counter_ = 0;
-       
-        std::unique_lock<std::mutex> lock(*mutex_);
-        
-        std::cout << "GOT MUTEX END OF LOCAL PHASE" << std::endl;
-        
-
+        *ended_phase_counter_ = 0;   
         if (!*anything_to_send_) {
-            std::cout << "Optimal solution found, beginning retrieving" << std::endl;
+            std::cerr << "Optimal solution found, beginning retrieving" << std::endl;
             *phase_ = MainComputationPhase::RETRIEVE_PATH_MAIN;
+            (*notification_counter_)++;
+            cond_->notify_one();
         }
         else {
             *phase_ = MainComputationPhase::EXCHANGE_PHASE_MAIN;
+            (*notification_counter_)++;
+            cond_->notify_one();
         }
         *anything_to_send_ = false;
     }
@@ -95,19 +94,18 @@ Status ShortestPathsMainServer::end_of_local_phase(ServerContext *context, const
 
 
 Status ShortestPathsMainServer::end_of_exchange_phase(ServerContext *context, const ExchangePhaseEnd *exchange_phase_end, Ok *ok_reply) {
+    std::unique_lock<std::mutex> lock(*mutex_);
+    
     *ended_phase_counter_ += 1;
 
     if (ended_phase_counter_ == region_number_) {
         ended_phase_counter_ = 0;
-       
-        std::unique_lock<std::mutex> lock(*mutex_);
         ClientContext context;
         Ok ok,ok2;
         for(const auto& worker: *worker_stubs_){
             worker.second.first->begin_next_round(&context, ok, &ok2);
         }
         *phase_ = MainComputationPhase::WAIT_FOR_EXCHANGE;
-        
     }
 
     return Status::OK;
@@ -142,29 +140,18 @@ void ShortestPathsMainServer::retrieve_path_main(){
             retrieved_path.emplace_back(next_vertex,next_distance);
         }
     }
-
-    std::cout << "WHOLE PATH RETRIEVED " << total_distance << std::endl;
+    std::cerr << "WHOLE PATH RETRIEVED " << total_distance << std::endl;
     for (auto const v: retrieved_path) {
         std::cout << v.first << " " << v.second << std::endl;
     }
-
- 
-    
     for(const auto& worker: *worker_stubs_){
         ClientContext context;
         Ok ok,ok2;
         worker.second.first->end_of_query(&context, ok, &ok2);
     }
-
-    if (queries_->empty()){
-        *phase_ = MainComputationPhase::WAIT_FOR_QUERY;
-    }
-    else {
-        *phase_ = MainComputationPhase::SEND_QUERY;
-        current_query_ = std::make_shared<ClientQuery>(queries_->front());
-        queries_->pop();
-    }
+    this->check_queries();
 }
+
 //------------------------------------------------------------------------------------------------------------------------------------------------------
 void ShortestPathsMainServer::run() {
     bool end = false;
@@ -172,7 +159,10 @@ void ShortestPathsMainServer::run() {
     while (!end)
     {
         std::unique_lock<std::mutex> lock(*mutex_); //@todo 
-
+        while (*notification_counter_ < 1) {
+            cond_->wait(lock);
+        }
+        *notification_counter_=0;
         switch (*phase_)
         {
             case MainComputationPhase::STARTUP:
@@ -214,12 +204,6 @@ void ShortestPathsMainServer::run() {
             case MainComputationPhase::RETRIEVE_PATH_MAIN:
                 this->retrieve_path_main();
                 break;
-            case MainComputationPhase::WAIT_FOR_PATH_RETRIEVAL_MAIN: //todo
-                break;
-            case MainComputationPhase::BROADCAST_END_OF_QUERY: //todo
-                break;
         }
-        lock.unlock();
-        // may need to free lock if RAII does not
     }
 }

@@ -13,7 +13,6 @@
 #include "worker_server.hh"
 
 Status ShortestPathsWorkerServer::send_jobs_to_neighbors(ServerContext *context, const ContinueJobs *continue_jobs, Ok *ok_reply) {
-    // std::cout<<
     auto lock = std::unique_lock<std::mutex> (worker_state_->phase_mutex_);
     const auto parent_region = continue_jobs->parent_region();
     for (const auto& job : continue_jobs->job()) {

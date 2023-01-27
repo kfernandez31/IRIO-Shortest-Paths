@@ -49,7 +49,7 @@ private:
     void post_request_cleanup();
     void send_to_neighbors();
     dist_t get_distance(const vertex_id_t vertex);
-    void dijkstra_within_region();
+    bool dijkstra_within_region();
     void send_end_of_phase_to_main(bool anything_to_send);
     void send_end_of_echange_to_main();
 

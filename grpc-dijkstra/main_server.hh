@@ -10,6 +10,7 @@
 #include "common.hh"
 
 #include <map>
+#include <condition_variable>
 #include <memory>
 #include <queue>
 
@@ -29,12 +30,14 @@ class ShortestPathsMainServer final : public ShortestPathsMainService::Service
 public:
     ShortestPathsMainServer(size_t region_number) {
         mutex_ = std::make_shared<std::mutex>();
-        phase_ = std::make_shared<MainComputationPhase>(MainComputationPhase::WAIT_FOR_QUERY);
+        cond_ = std::make_shared<std::condition_variable>(); 
+        phase_ = std::make_shared<MainComputationPhase>(MainComputationPhase::STARTUP);
         queries_ = std::make_shared<std::queue<ClientQuery>>();
         worker_stubs_ = std::make_shared<std::map<region_id_t, std::pair<std::unique_ptr<ShortestPathsWorkerService::Stub>, std::string>>>();
         region_number_ = std::make_shared<size_t>(region_number);
         ended_phase_counter_ = std::make_shared<size_t>(0);
         anything_to_send_ = std::make_shared<bool>(false);
+        notification_counter_ = std::make_shared<size_t>(0);
     }
 
     Status client_query(ServerContext *context, const ClientQuery *client_query, Ok *ok_reply);
@@ -43,10 +46,13 @@ public:
     Status end_of_local_phase(ServerContext *context, const LocalPhaseEnd *HelloRequest, Ok *ok_reply);
     Status end_of_exchange_phase(ServerContext *context, const ExchangePhaseEnd *HelloRequest, Ok *ok_reply);
 
+    void check_queries();
     void run();
     void retrieve_path_main();
 private:
     std::shared_ptr<std::mutex> mutex_;
+    std::shared_ptr<std::condition_variable> cond_;
+    std::shared_ptr<size_t> notification_counter_;
     std::shared_ptr<MainComputationPhase> phase_;
     std::shared_ptr<std::queue<ClientQuery>> queries_;
     std::shared_ptr<std::map<region_id_t, std::pair<std::unique_ptr<ShortestPathsWorkerService::Stub>, std::string>>> worker_stubs_; 
