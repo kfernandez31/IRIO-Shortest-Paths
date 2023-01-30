@@ -73,7 +73,7 @@ Status ShortestPathsMainServer::end_of_local_phase(ServerContext *context, const
     *ended_phase_counter_ += 1;
     *anything_to_send_ |= local_phase_request->anything_to_send();
     std::cout<<local_phase_request->anything_to_send()<<std::endl;
-    std::cout<<*ended_phase_counter_ << "  " << *region_number_<<std::endl;
+    std::cout<<*ended_phase_counter_ << "  " << *region_number_ << " " << context->peer() <<std::endl;
     if (*ended_phase_counter_ == *region_number_) {
         *ended_phase_counter_ = 0;   
         if (!*anything_to_send_) {

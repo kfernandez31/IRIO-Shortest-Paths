@@ -20,6 +20,7 @@ Status ShortestPathsWorkerServer::send_jobs_to_neighbors(ServerContext *context,
         auto const distance = job.distance_to_child();
         std::cout << "GOT NEW JOB" << parent_vertex_id << " " << child_vertex_id << " " << std::endl; 
         worker_state_->pq_.emplace(distance, child_vertex_id, parent_vertex_id, parent_region);
+        std::cout <<"EMPLACEd JOB"<< parent_vertex_id << " " << child_vertex_id << " " << std::endl; 
     }
     received_jobs_from_neighbours_[parent_region] = true;
     received_jobs_from_neighbours_counter_++;

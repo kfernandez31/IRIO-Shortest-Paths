@@ -4,6 +4,7 @@ import logging
 import shortestpaths_pb2
 import shortestpaths_pb2_grpc
 import psycopg2
+import sys
 
 class ConnectorServer(shortestpaths_pb2_grpc.DBConnector):
     def get_region_info(self, request, context):
@@ -12,24 +13,21 @@ class ConnectorServer(shortestpaths_pb2_grpc.DBConnector):
 
 
     def get_region_info_inner(self, region_id):
-        print("siabadabaa")
         cursor = self.conn.cursor()
         cursor.execute("SELECT id, region FROM node")
         all_verticies = cursor.fetchall()
         region_set = set([reg for (_, reg) in all_verticies])
         all_verticies = {v_id: reg for (v_id, reg) in all_verticies}
 
-        # print(all_verticies)
-        print(region_id)
+        # print(region_id)
         cursor.execute(f"SELECT id, region FROM node WHERE region={region_id}")
-        print(f"SELECT id, region FROM node WHERE region={region_id}")
+        # print(f"SELECT id, region FROM node WHERE region={region_id}")
         verticies = cursor.fetchall()
-        print(verticies)
+        # print(verticies)
 
         e_info = []
         v_info = []
         for (vertex, _) in verticies:
-            # print(vertex)
             cursor.execute(f"SELECT * FROM edge WHERE source = {vertex}")
             edges = cursor.fetchall()
             cursor.execute(f"SELECT * FROM optimal_connection WHERE source = {vertex}")
@@ -54,8 +52,6 @@ class ConnectorServer(shortestpaths_pb2_grpc.DBConnector):
 
                 e_info.append(e_info_inner)
         
-        # print(v_info)
-        # print(e_info)
         r_info = shortestpaths_pb2.RegionInfo(verticies = v_info, edges = e_info)
 
         return r_info
@@ -73,32 +69,35 @@ class ConnectorServer(shortestpaths_pb2_grpc.DBConnector):
         cursor = self.conn.cursor()
         cursor.execute("SELECT * FROM direct_connection")
         result = cursor.fetchall()
-        print(result)
+        # print(result)
         return result
 
 
-    def make_db(self):
+    def make_db(self, db_addr, db_port):
         self.conn = psycopg2.connect(
         database="postgres", 
         user="postgres", password="postgrespw", 
-        host="172.21.59.235", port="32768")
+        host=db_addr, port=db_port)
 
         self.conn.autocommit = True
 
 
-def serve():
+def serve(db_addr, db_port):
     s = ConnectorServer()
-    s.make_db()
+    s.make_db(db_addr, db_port)
+    print("Connected to DB")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     shortestpaths_pb2_grpc.add_DBConnectorServicer_to_server(
         s, server)
-    server.add_insecure_port('localhost:5005')
+    server.add_insecure_port('0.0.0.0:5005')
     server.start()
     server.wait_for_termination()
 
 
 
 if __name__ == '__main__':
+    db_addr = sys.argv[1]
+    db_port = sys.argv[2]
     logging.basicConfig()
-    serve()
+    serve(db_addr, db_port)
 

@@ -47,9 +47,9 @@ int main(int argc, char **argv) {
     Ok ok;
     ClientQuery query;
     query.set_start_vertex(3460511791);
-    query.set_end_vertex(3460512999);
+    query.set_end_vertex(1204288441);
     query.set_start_vertex_region(2);
-    query.set_end_vertex_region(2);
+    query.set_end_vertex_region(13);
     
     stub->client_query(&context, query, &ok);
     std::cout << "SENT QUERY" <<std::endl;
