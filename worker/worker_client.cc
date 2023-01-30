@@ -19,21 +19,24 @@ ShortestPathsWorkerClient::ShortestPathsWorkerClient(
     const std::shared_ptr<Channel> channel,
     std::shared_ptr<WorkerState> worker_state,
     const std::string &main_address,
-    const std::string &own_address) : stub_(ShortestPathsMainService::NewStub(channel)),
+    const std::string &own_address,
+    const std::string &db_address) : stub_(ShortestPathsMainService::NewStub(channel)),
                                       worker_state_(worker_state),
                                       address_(own_address),
                                       main_address_(main_address)
 {
+    std::cout<<db_address<<std::endl;
     ClientContext context;
     RegionReply region;
     HelloRequest request;
     request.set_addr(own_address);
     Status status = stub_->hello_and_get_region(&context, request, &region);
+
     region_ = region.region_num();
-    worker_state_->my_vertices_ = load_graph(region_);
+    worker_state_->my_vertices_ = load_graph(db_address, region_);
     neighbors_jobs_ = std::map<region_id_t, std::vector<ContinueJob>>();
 
-    std::cerr << "WORKER CLIENT HELLO AND GET REGION" << std::endl;
+    std::cerr << "WORKER CLIENT HELLO AND GET REGION " << region_ << std::endl;
 }
 
 void ShortestPathsWorkerClient::post_request_cleanup()
@@ -84,12 +87,12 @@ void ShortestPathsWorkerClient::compute_phase()
                 {
                     auto anything_to_send = this->dijkstra_within_region();
                     lock.unlock();
-                    std::cerr << "END OF DIJKSTRA" << std::endl;
+                    std::cout << "END OF DIJKSTRA" << region_ << "<<" << std::endl;
                     this->send_to_neighbors();
-                    std::cerr << "SENT TO NEIGH" << std::endl;
+                    std::cout << "SENT TO NEIGH" << region_<< "<<" << std::endl;
                     this->send_end_of_phase_to_main(anything_to_send);
-                    std::cerr << "SENT TO MAIN" << std::endl;
-                    
+                    std::cout << "SENT TO MAIN " + std::to_string(region_) + "<<" << std::endl;
+                    // worker_state_->phase_ = WorkerComputationPhase::AWAIT_MAIN;
                 }
                 break;
             case WorkerComputationPhase::END_OF_EXCHANGE:
@@ -109,6 +112,7 @@ bool ShortestPathsWorkerClient::dijkstra_within_region()
 {
     bool anything_to_send = false;
     while (!worker_state_->pq_.empty()) {
+        std::cerr << "DIJKSTRA LOOP <===================================== " << region_ <<std::endl;
         vertex_path_info_t top = worker_state_->pq_.top();
         worker_state_->pq_.pop();
         dist_t dist = std::get<0>(top);

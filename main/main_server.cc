@@ -99,7 +99,7 @@ Status ShortestPathsMainServer::end_of_exchange_phase(ServerContext *context, co
     
     *ended_phase_counter_ += 1;
 
-    if (ended_phase_counter_ == region_number_) {
+    if (*ended_phase_counter_ == *region_number_) {
         ended_phase_counter_ = 0;
         ClientContext context;
         Ok ok,ok2;
@@ -154,9 +154,9 @@ void ShortestPathsMainServer::retrieve_path_main(){
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------
-void ShortestPathsMainServer::run() {
+void ShortestPathsMainServer::run(std::string db_address) {
     bool end = false;
-    auto border_info = load_region_borders();
+    auto border_info = load_region_borders(db_address);
     while (!end)
     {
         std::unique_lock<std::mutex> lock(*mutex_); //@todo 
@@ -183,7 +183,10 @@ void ShortestPathsMainServer::run() {
                     new_job.set_end_vertex(end_vertex);
                     new_job.set_end_vertex_region(end_vertex_region);
                     new_job.set_is_first(start_vertex_region == worker.first);
+                    std::cerr <<worker.first <<" worker and is first "<< (start_vertex_region == worker.first) << std::endl;
+                    std::cerr << "tutaj" << new_job.is_first() << std::endl;
                     for (auto border : border_info[worker.first]) {
+                        std::cout << "border" << std::endl;
                         auto info = new_job.add_neighbours();
                         info->set_address((*worker_stubs_)[border].second);
                         info->set_region_number(border);

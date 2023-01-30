@@ -7,6 +7,7 @@
 #include <condition_variable>
 #include <vector>
 #include <tuple>
+#include <chrono>
 
 #include "worker_server.hh"
 
@@ -56,7 +57,10 @@ Status ShortestPathsWorkerServer::begin_new_query(ServerContext *context, const 
 
     if (is_first)
     {
-        std::cout << "I AM FIRST " << std::endl;
+        std::chrono::milliseconds timespan(2000); // or whatever
+
+        std::this_thread::sleep_for(timespan);
+        std::cout << "I AM FIRST " + std::to_string(start_vertex) << std::endl;
         worker_state_->pq_.emplace(0, start_vertex, start_vertex, (worker_state_->my_vertices_)[start_vertex]->region_);
     }
 
@@ -82,6 +86,7 @@ Status ShortestPathsWorkerServer::begin_next_round(ServerContext *context, const
 
 
 Status ShortestPathsWorkerServer::send_path(ServerContext *context, const RetVertex *ret_vertex, Path *path_reply) {
+    std::cout << "RECEIVED SEND PATH FROM MAIN" << std::endl;
     auto lock = std::unique_lock<std::mutex> (worker_state_->phase_mutex_);
     auto act_vertex = ret_vertex->vertex_id();
     auto my_region = (worker_state_->my_vertices_)[act_vertex]->region_;

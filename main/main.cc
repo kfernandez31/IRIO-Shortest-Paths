@@ -21,11 +21,11 @@
 
 int main(int argc, char **argv) {
     if (argc != 1) {
-        std::cout << "Usage: ./main" << std::endl;
+        std::cout << "Usage: ./main db_address" << std::endl;
     }
 
     auto main_server_address = std::string("0.0.0.0:5001");
-   
+    auto db_address = std::string(argv[1]);
 
   //  auto main_client = ShortestPathsMainClient(
    //     grpc::CreateChannel(main_server_address, grpc::InsecureChannelCredentials())
@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
 
     auto main_server = std::make_shared<ShortestPathsMainServer>(NUM_PARTITIONS);
 
-    auto client_thread = std::thread(&ShortestPathsMainServer::run, &*main_server);
+    auto client_thread = std::thread(&ShortestPathsMainServer::run, &*main_server, db_address);
 
     grpc::EnableDefaultHealthCheckService(true);
     grpc::reflection::InitProtoReflectionServerBuilderPlugin();

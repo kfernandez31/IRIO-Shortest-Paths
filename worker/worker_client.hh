@@ -36,7 +36,8 @@ public:
         const std::shared_ptr<Channel> channel,
         std::shared_ptr<WorkerState> worker_state,
         const std::string& main_address,
-        const std::string& own_address
+        const std::string& own_address,
+        const std::string& db_address
     );
 
     void run();

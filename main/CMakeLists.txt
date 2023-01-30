@@ -44,3 +44,10 @@ target_link_libraries(main
     ${_REFLECTION}
     ${_GRPC_GRPCPP}
     ${_PROTOBUF_LIBPROTOBUF})
+
+add_executable(client_test "client_test.cc")
+target_link_libraries(client_test
+    shortestpaths_grpc_proto
+    ${_REFLECTION}
+    ${_GRPC_GRPCPP}
+    ${_PROTOBUF_LIBPROTOBUF})

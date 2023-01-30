@@ -21,14 +21,14 @@
 #include <tuple>
 
 int main(int argc, char **argv) {
-    if (argc != 4) {
-        std::cout << "Usage: ./worker main_server_address worker_address" << std::endl;
+    if (argc != 5) {
+        std::cout << "Usage: ./worker main_server_address worker_address db_server" << std::endl;
     }
 
     auto main_server_address = std::string(argv[1]);
     auto worker_address = std::string(argv[2]);
     auto send_address = std::string(argv[3]);
-
+    auto db_address = std::string(argv[4]);
     std::cout << "GRAPH ACQUIRED" << std::endl;
 
     auto worker_state = std::make_shared<WorkerState>(); 
@@ -41,7 +41,8 @@ int main(int argc, char **argv) {
         grpc::CreateChannel(main_server_address, grpc::InsecureChannelCredentials()), //TODO: do we want authentication?
         worker_state,
         main_server_address, 
-        worker_address
+        worker_address,
+        db_address
     );
 
     auto worker_server = std::make_shared<ShortestPathsWorkerServer>(worker_state, send_address);

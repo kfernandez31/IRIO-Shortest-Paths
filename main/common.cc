@@ -3,53 +3,74 @@
 #include <map>
 #include <iostream>
 
-std::map<vertex_id_t, std::shared_ptr<Vertex>> load_graph(region_id_t region_num)
+using namespace shortestpaths;
+using grpc::Channel;
+using grpc::ClientContext;
+using grpc::ClientReader;
+using grpc::ClientWriter;
+using grpc::Server;
+using grpc::ServerBuilder;
+using grpc::ServerContext;
+using grpc::ServerReader;
+using grpc::Status;
+
+std::map<vertex_id_t, std::shared_ptr<Vertex>> load_graph(std::string addr, region_id_t region_num)
 {
-    if (region_num == 0)
+    auto channel = grpc::CreateChannel(addr, grpc::InsecureChannelCredentials());
+    auto stub = shortestpaths::DBConnector::NewStub(channel);
+    ClientContext client_context;
+    RegionId reg_id;
+    reg_id.set_region_id(region_num);
+    RegionInfo regios_info;
+    stub->get_region_info(&client_context, reg_id, &regios_info);
+    std::map<vertex_id_t, std::shared_ptr<Vertex>> ret_map;
+    for (auto const &vertex : regios_info.verticies())
     {
-        auto v0 = std::make_shared<Vertex>(0, 0, std::vector<Edge>{});
-        auto v1 = std::make_shared<Vertex>(1, 0, std::vector<Edge>{});
-        auto v2 = std::make_shared<Vertex>(2, 0, std::vector<Edge>{});
-        auto e1 = Edge(1, 1, 0, {1, 1});
-        auto e2 = Edge(10, 2, 0, {1, 1});
-        auto e3 = Edge(10, 3, 1, {1, 1});
-        auto e4 = Edge(2137, 5, 1, {1, 1});
-        
-        v0->edges.push_back(e1);
-        v1->edges.push_back(e2);
-        v2->edges.push_back(e3);
-        v2->edges.push_back(e4);
-
-        std::map<vertex_id_t, std::shared_ptr<Vertex>> m;
-        m[0] = v0;
-        m[1] = v1;
-        m[2] = v2;
-
-        return std::move(m);
+        auto v = vertex.vertex_id();
+        ret_map[v] = std::make_shared<Vertex>(v, region_num, std::vector<Edge>{});
     }
-    else
+    for (auto const &edge : regios_info.edges())
     {
-        auto v3 = std::make_shared<Vertex>(3, 1, std::vector<Edge>{});
-        auto v4 = std::make_shared<Vertex>(4, 1, std::vector<Edge>{});
-        auto v5 = std::make_shared<Vertex>(5, 1, std::vector<Edge>{});
-        auto e5 = Edge(10, 4, 1, {1, 1});
-        auto e6 = Edge(1, 1, 0,{1,1});
-        v3->edges.push_back(e5);
-        v3->edges.push_back(e6);
-        std::map<vertex_id_t, std::shared_ptr<Vertex>> m;
-        m[3] = v3;
-        m[4] = v4;
-        m[5] = v5;
-        return std::move(m);
+        auto v_s = edge.start_vertex_id();
+        auto v_e = edge.end_vertex_id();
+        auto e_len = edge.weight();
+        auto v_e_reg = edge.end_vertex_region();
+        std::vector<bool> mask{};
+
+        for (auto const &mas : edge.mask())
+        {
+            mask.push_back(mas.is_optimal());
+        }
+        auto e = Edge(e_len, v_e, v_e_reg, mask);
+        ret_map[v_s]->edges.push_back(e);
     }
+
+    return ret_map;
 }
 
-std::map<region_id_t, std::vector<region_id_t>> load_region_borders()
+std::map<region_id_t, std::vector<region_id_t>> load_region_borders(std::string addr)
 {
+    auto channel = grpc::CreateChannel(addr, grpc::InsecureChannelCredentials());
+    auto stub = shortestpaths::DBConnector::NewStub(channel);
+    ClientContext client_context;
+    Ok ok;
+    RegionIds region_borders;
+
+    stub->get_region_neighbours(&client_context, ok, &region_borders);
+
     auto m = std::map<region_id_t, std::vector<region_id_t>>();
-    m[0] = std::vector<region_id_t>();
-    m[0].push_back(1);
-    m[1] = std::vector<region_id_t>();
-    m[1].push_back(0);
+
+    for (auto const &border : region_borders.region_border())
+    {
+        auto r1 = border.region_id1();
+        auto r2 = border.region_id2();
+        if (m.find(r1) == m.end())
+        {
+            m[r1] = std::vector<region_id_t>();
+        }
+
+        m[r1].push_back(r2);
+    }
+
     return m;
 }

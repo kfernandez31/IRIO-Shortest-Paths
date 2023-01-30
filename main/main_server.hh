@@ -47,7 +47,7 @@ public:
     Status end_of_exchange_phase(ServerContext *context, const ExchangePhaseEnd *HelloRequest, Ok *ok_reply);
 
     void check_queries();
-    void run();
+    void run(std::string db_address);
     void retrieve_path_main();
 private:
     std::shared_ptr<std::mutex> mutex_;

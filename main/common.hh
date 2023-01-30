@@ -18,7 +18,7 @@
 
 using namespace shortestpaths;
 
-static constexpr int NUM_PARTITIONS = 2;
+static constexpr int NUM_PARTITIONS = 20;
 
 enum WorkerComputationPhase {
     AWAIT_MAIN = 0,
@@ -38,9 +38,9 @@ enum MainComputationPhase{
 };
 
 
-using vertex_id_t = int;// @todo
-using region_id_t = int;// @todo
-using edge_id_t = int;// @todo
+using vertex_id_t = int64_t;// @todo
+using region_id_t = int64_t;// @todo
+using edge_id_t = int64_t;// @todo
 using dist_t = uint64_t; // @todo
 using pdv_t = std::pair<dist_t, vertex_id_t>; //tochange
 using graph_t = std::map<std::pair<vertex_id_t, vertex_id_t>, dist_t>;
@@ -81,9 +81,9 @@ using maxheap_t = std::priority_queue<vertex_path_info_t, std::vector<vertex_pat
 static constexpr dist_t INF = std::numeric_limits<dist_t>::max();
 
 
-std::map<vertex_id_t, std::shared_ptr<Vertex>> load_graph(region_id_t region_num);
+std::map<vertex_id_t, std::shared_ptr<Vertex>> load_graph(std::string addr, region_id_t region_num);
 
-std::map<region_id_t, std::vector<region_id_t>> load_region_borders();
+std::map<region_id_t, std::vector<region_id_t>> load_region_borders(std::string addr);
 
 
 class WorkerState{
