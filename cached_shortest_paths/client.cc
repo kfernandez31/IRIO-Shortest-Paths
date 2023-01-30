@@ -1,71 +1,49 @@
-#include <iostream>
-#include <memory>
-#include <string>
-#include <vector>
+#include "client.hh"
 
-#include "caching_interceptor.hh"
-
-#include <grpcpp/grpcpp.h>
-
-#include "shortestpaths.grpc.pb.h"
+using namespace shortestpaths;
+using namespace std;
 
 using grpc::Channel;
 using grpc::ClientContext;
+using grpc::ClientReader;
+using grpc::Server;
+using grpc::ServerBuilder;
+using grpc::ServerContext;
+using grpc::ServerReader;
 using grpc::Status;
-using shortestpaths::Router;
-using shortestpaths::ShortestPathRequest;
-using shortestpaths::ShortestPathResponse;
+using grpc::ClientWriter;
 
-class ShortestPathClient {
-public:
-    ShortestPathClient(std::shared_ptr<Channel> channel)
-        : stub_(Router::NewStub(channel)) {}
+ShortestPathClient::ShortestPathClient(std::shared_ptr<Channel> channel)
+    : stub_(Router::NewStub(channel)) {}
 
-    void GetShortestPaths(const std::vector<std::pair<int, int>>& payloads) {
-        ClientContext context;
-        auto stream = stub_->GetShortestPaths(&context);
+region_id_t ShortestPathClient::get_region(const vertex_id_t vertex) {
+    ClientContext context;
+    RegionQuery query;
+    RegionReply reply;
 
-        for (const auto& payload : payloads) {
-            ShortestPathRequest request;
-            request.set_source(payload.first);
-            request.set_destination(payload.second);
-            stream->Write(request);
+    query.set_vertex(vertex);
 
-            ShortestPathResponse response; 
-            stream->Read(&response);
-            std::cout << "(" << payload.first << ", " << payload.second << ") : " << response.distance() << "\n";
-        }
+    stub_->get_region(&context, request, &reply);
 
-        stream->WritesDone();
-        Status status = stream->Finish();
-        if (!status.ok()) {
-            std::cout << "Error when closing stream: " << status.error_code() << ": " << status.error_message() << std::endl;
-        }
-    }
+    return reply.region();
+}
 
-private:
-    std::unique_ptr<Router::Stub> stub_;
-};
+dist_t ShortestPathClient::get_shortest_path(const vertex_id_t start, const vertex_id_t end) {
+    ClientContext context;
 
-int main(int argc, char** argv) {
-  // Instantiate the client. It requires a channel, out of which the actual RPCs
-  // are created. This channel models a connection to an endpoint (in this case,
-  // localhost at port 50051). We indicate that the channel isn't authenticated
-  // (use of InsecureChannelCredentials()).
-  // In this example, we are using a cache which has been added in as an
-  // interceptor.
-    grpc::ChannelArguments args;
-    std::vector<std::unique_ptr<grpc::experimental::ClientInterceptorFactoryInterface>> interceptor_creators;
-    interceptor_creators
-        .push_back(std::unique_ptr<CachingInterceptorFactory>(new CachingInterceptorFactory()));
-    auto channel = grpc::experimental::CreateCustomChannelWithInterceptors(
-        "localhost:50051", grpc::InsecureChannelCredentials(), args,
-        std::move(interceptor_creators)
-    );
-    ShortestPathClient client(channel);
+    auto start_region = get_region(start);
+    auto end_region = get_region(end);
 
-    std::vector<std::pair<int, int>> payloads = {{1, 1}, {1, 2}, {1, 3}, {1, 4}, {1, 5}};
-    client.GetShortestPaths(payloads);
+    ClientContext context;
+    Client Query query;
+    Ok reply;
 
-    return 0;
+    query.set_start_vertex(start);
+    query.set_end_vertex(end);
+    query.set_start_vertex_region(start_region);
+    query.set_end_vertex_region(end_region);
+
+    stub_->client_query(&context, request, &reply);
+
+    return reply.distance();
 }

@@ -7,25 +7,24 @@ using namespace shortestpaths;
 const std::string redis_host = "127.0.0.1";
 const int redis_port = 7777;
 
-static inline std::string to_redis_key(int src, int dst) {
+static inline std::string to_redis_key(vertex_id_t src, vertex_id_t dst) {
     return std::to_string(src) + "-" + std::to_string(dst);
 }
 
-static inline std::string to_redis_val(int dist) {
+static inline std::string to_redis_val(dist_t dist) {
     return std::to_string(dist);
 }
 
-std::optional<int> CachingInterceptor::get_in_cache(int src, int dst) {
+std::optional<int> CachingInterceptor::get_in_cache(vertex_id_t src, vertex_id_t dst) {
     auto val = redis_client_->get(to_redis_key(src, dst));
     if (!val) {
         return std::nullopt;
     } else {
         return std::stoi(*val);
     }
-    
 }
 
-void CachingInterceptor::set_in_cache(int source, int destination, int distance) {
+void CachingInterceptor::set_in_cache(vertex_id_t source, vertex_id_t destination, dist_t distance) {
     redis_client_->set(to_redis_key(source, destination), to_redis_val(distance));
 }
 
@@ -34,8 +33,6 @@ CachingInterceptor::CachingInterceptor(ClientRpcInfo* info) {
     opts.host = redis_host;
     opts.port = redis_port;
     redis_client_ = std::make_unique<Redis>(opts);
-
-    set_in_cache(1, 1, 69);
 }
 
 void CachingInterceptor::Intercept(InterceptorBatchMethods* methods){
@@ -72,10 +69,8 @@ void CachingInterceptor::Intercept(InterceptorBatchMethods* methods){
         // Check if the key is present in the map
         auto search = get_in_cache(source, destination);
         if (search) {
-            std::cout << "Key " << "(" << source << ", " << destination << ") found in cache!\n";
             response_ = *search;
         } else {
-            std::cout << "Key " << "(" << source << ", " << destination << ") not found in cache. Pinging server...\n";
             // Key was not found in the cache, so make a request
             ShortestPathRequest req;
             req.set_source(source);
