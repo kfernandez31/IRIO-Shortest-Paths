@@ -1,0 +1,50 @@
+#include <grpcpp/grpcpp.h>
+#include <grpcpp/ext/proto_server_reflection_plugin.h>
+#include <grpcpp/health_check_service_interface.h>
+#include <grpcpp/server.h>
+#include <grpcpp/server_builder.h>
+#include <grpcpp/server_context.h>
+#include <grpc/grpc.h>
+#include "shortestpaths.grpc.pb.h"
+
+#include "main_server.hh"
+#include <iostream>
+#include <memory>
+#include <string>
+#include <queue>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <vector>
+#include <tuple>
+#include <bitset>
+
+int main(int argc, char **argv) {
+    if (argc != 1) {
+        std::cout << "Usage: ./main db_address" << std::endl;
+    }
+
+    auto main_server_address = std::string("0.0.0.0:5001");
+    auto db_address = std::string(argv[1]);
+
+  //  auto main_client = ShortestPathsMainClient(
+   //     grpc::CreateChannel(main_server_address, grpc::InsecureChannelCredentials())
+    //);
+
+    auto main_server = std::make_shared<ShortestPathsMainServer>(NUM_PARTITIONS);
+
+    auto client_thread = std::thread(&ShortestPathsMainServer::run, &*main_server, db_address);
+
+    grpc::EnableDefaultHealthCheckService(true);
+    grpc::reflection::InitProtoReflectionServerBuilderPlugin();
+    ServerBuilder builder;
+    builder.AddListeningPort(main_server_address, grpc::InsecureServerCredentials()); //TODO: do we want authentication?
+    builder.RegisterService(&*main_server);
+    auto server = builder.BuildAndStart();
+
+    std::cout << "Server listening on " << main_server_address << std::endl;
+
+    server->Wait();
+
+    return 0;
+}

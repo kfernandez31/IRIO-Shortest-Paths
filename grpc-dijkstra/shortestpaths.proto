@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package shortestpaths;
+
+//TODO: decide on "region" vs "sector" naming convention
+
+// The length service definition.
+service ShortestPathsMainService {
+  // Sends a greeting
+  rpc client_query (ClientQuery) returns (Ok) {}
+  rpc hello_and_get_region (HelloRequest) returns (RegionReply) {}
+  rpc end_of_local_phase(LocalPhaseEnd) returns (Ok) {}
+  rpc end_of_exchange_phase(ExchangePhaseEnd) returns (Ok) {}
+}
+
+message ClientQuery {
+  int32 start_vertex = 1;
+  int32 start_vertex_region = 2;
+  int32 end_vertex = 3;
+  int32 end_vertex_region = 4;
+}
+
+message Address {
+  string addr = 1;
+}
+
+message HelloRequest {
+  string addr = 1;
+}
+
+message Ok {}
+
+message LocalPhaseEnd {
+  bool anything_to_send = 1;
+}
+
+message ExchangePhaseEnd {}
+
+
+message RegionReply {
+  int32 region_num = 1;
+}
+
+service ShortestPathsWorkerService {
+  rpc begin_new_query (NewJob) returns (Ok) {}
+  rpc send_jobs_to_neighbors (ContinueJobs) returns (Ok) {}
+  rpc begin_next_round (Ok) returns (Ok) {}
+  rpc send_path (RetVertex) returns (Path) {} 
+  rpc end_of_query (Ok) returns (Ok) {}
+}
+
+message RetVertex {
+  int32 vertex_id = 1;
+}
+
+message Path {
+  repeated PathVert path_vericies = 1;
+}
+
+message PathVert {
+  int32 next_region_id = 1;
+  uint64 distance = 2;
+  int32 vertex = 3;
+}
+
+
+// [packed=true] caused compilation errors, maybe we will add it later, for performance
+message NeighbourInfo {
+    string address = 1;
+    int32 region_number = 2;
+}
+
+message NewJob {
+  int32 start_vertex = 1;//; [packed=true];
+  int32 end_vertex = 2; //[packed=true];
+  int32 end_vertex_region = 3;// [packed=true];
+  bool is_first = 4;
+
+  repeated NeighbourInfo neighbours = 5;
+}
+
+message ContinueJob {
+  int32 parent = 1;// [packed=true];
+  // int32 parent_region = 2;// [packed=true]; // not used
+  int32 child = 2; // [packed=true];
+  int32 child_region = 3; // [packed=true]; //not used, we know what is our region
+  uint64 distance_to_child = 4; //[packed=true];
+}
+
+message ContinueJobs {
+  int32 parent_region = 1;
+  repeated ContinueJob job = 2;
+};

@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package shortestpaths;
+
+//TODO: decide on "region" vs "sector" naming convention
+
+// The length service definition.
+service ShortestPathsMainService {
+  // Sends a greeting
+  rpc client_query (ClientQuery) returns (Ok) {}
+  rpc hello_and_get_region (HelloRequest) returns (RegionReply) {}
+  rpc end_of_local_phase(LocalPhaseEnd) returns (Ok) {}
+  rpc end_of_exchange_phase(ExchangePhaseEnd) returns (Ok) {}
+}
+
+message ClientQuery {
+  int64 start_vertex = 1;
+  int64 start_vertex_region = 2;
+  int64 end_vertex = 3;
+  int64 end_vertex_region = 4;
+}
+
+message Address {
+  string addr = 1;
+}
+
+message HelloRequest {
+  string addr = 1;
+}
+
+message Ok {}
+
+message LocalPhaseEnd {
+  bool anything_to_send = 1;
+}
+
+message ExchangePhaseEnd {}
+
+
+message RegionReply {
+  int64 region_num = 1;
+}
+
+service ShortestPathsWorkerService {
+  rpc begin_new_query (NewJob) returns (Ok) {}
+  rpc send_jobs_to_neighbors (ContinueJobs) returns (Ok) {}
+  rpc begin_next_round (Ok) returns (Ok) {}
+  rpc send_path (RetVertex) returns (Path) {} 
+  rpc end_of_query (Ok) returns (Ok) {}
+}
+
+message RetVertex {
+  int64 vertex_id = 1;
+}
+
+message Path {
+  repeated PathVert path_vericies = 1;
+}
+
+message PathVert {
+  int64 next_region_id = 1;
+  uint64 distance = 2;
+  int64 vertex = 3;
+}
+
+
+// [packed=true] caused compilation errors, maybe we will add it later, for performance
+message NeighbourInfo {
+    string address = 1;
+    int64 region_number = 2;
+}
+
+message NewJob {
+  int64 start_vertex = 1;//; [packed=true];
+  int64 end_vertex = 2; //[packed=true];
+  int64 end_vertex_region = 3;// [packed=true];
+  bool is_first = 4;
+
+  repeated NeighbourInfo neighbours = 5;
+}
+
+message ContinueJob {
+  int64 parent = 1;// [packed=true];
+  // int64 parent_region = 2;// [packed=true]; // not used
+  int64 child = 2; // [packed=true];
+  int64 child_region = 3; // [packed=true]; //not used, we know what is our region
+  uint64 distance_to_child = 4; //[packed=true];
+}
+
+message ContinueJobs {
+  int64 parent_region = 1;
+  repeated ContinueJob job = 2;
+};
+
+
+service DBConnector {
+  rpc get_region_info(RegionId) returns (RegionInfo) {}
+  rpc get_region_neighbours(Ok) returns (RegionIds) {}
+};
+
+message RegionIds {
+  repeated RegionBorder region_border = 1;
+};
+
+message RegionBorder {
+  int64 region_id1 = 1;
+  int64 region_id2 = 2;
+}
+
+message RegionId {
+  int64 region_id =1;
+};
+
+message RegionInfo {
+  repeated VertexInfo verticies = 1;
+  repeated EdgeInfo edges = 2;
+};
+
+message VertexInfo {
+  int64 vertex_id = 1;
+};
+
+message EdgeInfo {
+  int64 start_vertex_id = 1;
+  int64 end_vertex_id = 2;
+  int64 end_vertex_region = 3;
+  uint64 weight = 4;
+  repeated Mask mask = 5;  
+};
+
+message Mask {
+  bool is_optimal = 1;
+};

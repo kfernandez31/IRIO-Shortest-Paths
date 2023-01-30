@@ -1,1 +1,8 @@
 .vscode/
+*/cmake/
+*/CMakeFiles/
+*/CMakeCache.txt
+*/*.a
+*/*.pb.*
+grpc/*
+grpc-install/*
