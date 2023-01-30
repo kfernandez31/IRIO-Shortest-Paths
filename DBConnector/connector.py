@@ -8,6 +8,7 @@ import sys
 
 class ConnectorServer(shortestpaths_pb2_grpc.DBConnector):
     def get_region_info(self, request, context):
+        logging.warning("Got get_region_info rpc")
         region_id = request.region_id
         return self.get_region_info_inner(region_id)
 
@@ -57,6 +58,7 @@ class ConnectorServer(shortestpaths_pb2_grpc.DBConnector):
         return r_info
 
     def get_region_neighbours(self, request, context):
+        logging.warning("Got get_region_neighbours rpc")
         region_borders = self.get_borders()
         region_borders = [shortestpaths_pb2.RegionBorder(region_id1 = x, region_id2 = y) for (x,y) in region_borders]
         result = shortestpaths_pb2.RegionIds()
@@ -69,7 +71,6 @@ class ConnectorServer(shortestpaths_pb2_grpc.DBConnector):
         cursor = self.conn.cursor()
         cursor.execute("SELECT * FROM direct_connection")
         result = cursor.fetchall()
-        # print(result)
         return result
 
 
@@ -84,20 +85,25 @@ class ConnectorServer(shortestpaths_pb2_grpc.DBConnector):
 
 def serve(db_addr, db_port):
     s = ConnectorServer()
+    logging.warning("Created server object")
     s.make_db(db_addr, db_port)
-    print("Connected to DB")
+    logging.warning("Connected to db")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     shortestpaths_pb2_grpc.add_DBConnectorServicer_to_server(
         s, server)
     server.add_insecure_port('0.0.0.0:5005')
+    logging.warning("About to start serving")
     server.start()
     server.wait_for_termination()
 
 
 
 if __name__ == '__main__':
-    db_addr = sys.argv[1]
-    db_port = sys.argv[2]
     logging.basicConfig()
+    logging.warning("started")
+    db_addr = sys.argv[1]
+    logging.warning(f"Addr of db: {db_addr}")
+    db_port = sys.argv[2]
+    logging.warning(f"DB port: {db_port}")
     serve(db_addr, db_port)
 

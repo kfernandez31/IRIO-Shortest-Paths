@@ -10,5 +10,3 @@ COPY ./*.proto .
 COPY Makefile .
 
 RUN make
-
-CMD ["./main"]
