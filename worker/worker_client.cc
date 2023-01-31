@@ -36,7 +36,7 @@ ShortestPathsWorkerClient::ShortestPathsWorkerClient(
     worker_state_->my_vertices_ = load_graph(db_address, region_);
     neighbors_jobs_ = std::map<region_id_t, std::vector<ContinueJob>>();
 
-    std::cerr << "WORKER CLIENT HELLO AND GET REGION " << region_ << std::endl;
+    std::cout << "WORKER CLIENT HELLO AND GET REGION " << region_ << std::endl;
 }
 
 void ShortestPathsWorkerClient::post_request_cleanup()
@@ -87,12 +87,11 @@ void ShortestPathsWorkerClient::compute_phase()
                 {
                     auto anything_to_send = this->dijkstra_within_region();
                     lock.unlock();
-                    std::cout << "END OF DIJKSTRA" << region_ << "<<" << std::endl;
+                    std::cout << "END OF DIJKSTRA PHASE FOR REGION: " << region_ << std::endl;
                     this->send_to_neighbors();
-                    std::cout << "SENT TO NEIGH" << region_<< "<<" << std::endl;
+                    std::cout << "SENT TO NEIGH " << region_ << std::endl;
                     this->send_end_of_phase_to_main(anything_to_send);
-                    std::cout << "SENT TO MAIN " + std::to_string(region_) + "<<" << std::endl;
-                    // worker_state_->phase_ = WorkerComputationPhase::AWAIT_MAIN;
+                    std::cout << "SENT TO MAIN " << region_ << std::endl;
                 }
                 break;
             case WorkerComputationPhase::END_OF_EXCHANGE:
@@ -101,7 +100,6 @@ void ShortestPathsWorkerClient::compute_phase()
             case WorkerComputationPhase::STOP_WORK:
                 end = true;
                 break;
-
         }
     }
     this->post_request_cleanup();
@@ -112,16 +110,14 @@ bool ShortestPathsWorkerClient::dijkstra_within_region()
 {
     bool anything_to_send = false;
     while (!worker_state_->pq_.empty()) {
-        std::cerr << "DIJKSTRA LOOP <===================================== " << region_ <<std::endl;
         vertex_path_info_t top = worker_state_->pq_.top();
         worker_state_->pq_.pop();
         dist_t dist = std::get<0>(top);
         vertex_id_t vertex_id = std::get<1>(top);
         vertex_id_t father_id = std::get<2>(top);
         region_id_t father_region = std::get<3>(top);
-        std::cout << " GOT TOP OF QUEUE " << vertex_id << std::endl;
         std::shared_ptr<Vertex> vertex = (worker_state_->my_vertices_)[vertex_id];
-
+        
         if (dist >= get_distance(vertex->id)) {
             continue; // top is outdated
         }
@@ -129,12 +125,10 @@ bool ShortestPathsWorkerClient::dijkstra_within_region()
         (worker_state_->distances_)[vertex_id] = dist;
         (worker_state_->parents_)[vertex_id] = std::make_pair(father_id, father_region);   
         for (const Edge& edge : vertex->edges) {
-            std::cout << " ITERATING OVER EDGES" << std::endl;
             dist_t new_dist = dist + edge.weight_;
             if (edge.reaches_optimally(worker_state_->destination_region_)) {
                 if (region_ != edge.end_region_) {
                     ContinueJob cont_job;
-                    std::cout << "New job for region" << edge.end_region_ << " from vertex " << vertex->id << " to" << edge.end_ << std::endl;
                     cont_job.set_distance_to_child(new_dist);
                     cont_job.set_parent(vertex->id);
                     cont_job.set_child(edge.end_);
@@ -177,7 +171,6 @@ void ShortestPathsWorkerClient::send_to_neighbors()
         auto region_id = region_info.first;
         auto region_jobs = region_info.second;
         for (const auto& job : region_jobs) {
-            std::cout << "     Job " << job.child() << std::endl;
             ContinueJob* continue_job = continue_jobs.add_job();
             *continue_job = job;
         }
@@ -186,5 +179,6 @@ void ShortestPathsWorkerClient::send_to_neighbors()
 
         (worker_state_->neighbors_)[region_id]->send_jobs_to_neighbors(&context, continue_jobs, &ok_reply); 
         region_jobs.clear();
+        std::cout << "END OF SENDING JOBS TO " << region_info.first << std::endl;
     }
 }

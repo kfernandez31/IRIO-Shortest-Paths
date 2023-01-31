@@ -18,7 +18,7 @@
 
 using namespace shortestpaths;
 
-static constexpr int NUM_PARTITIONS = 20;
+static constexpr int NUM_PARTITIONS = 5;
 
 enum WorkerComputationPhase {
     AWAIT_MAIN = 0,

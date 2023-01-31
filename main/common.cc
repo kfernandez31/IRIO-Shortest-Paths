@@ -50,6 +50,9 @@ std::map<vertex_id_t, std::shared_ptr<Vertex>> load_graph(std::string addr, regi
 
 std::map<region_id_t, std::vector<region_id_t>> load_region_borders(std::string addr)
 {
+    
+    std::cout << "DB ADDR IS:" <<" " <<addr<< std::endl;
+
     auto channel = grpc::CreateChannel(addr, grpc::InsecureChannelCredentials());
     auto stub = shortestpaths::DBConnector::NewStub(channel);
     ClientContext client_context;
@@ -60,10 +63,12 @@ std::map<region_id_t, std::vector<region_id_t>> load_region_borders(std::string 
 
     auto m = std::map<region_id_t, std::vector<region_id_t>>();
 
+    std::cout << "LOADING BORDERS FROM DB:" << std::endl;
     for (auto const &border : region_borders.region_border())
     {
         auto r1 = border.region_id1();
         auto r2 = border.region_id2();
+        std::cout << "LOADED BORDER " << r1 << " " << r2 << std::endl;
         if (m.find(r1) == m.end())
         {
             m[r1] = std::vector<region_id_t>();

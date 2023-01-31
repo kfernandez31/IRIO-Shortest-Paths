@@ -18,6 +18,8 @@ message ClientQuery {
   int64 start_vertex_region = 2;
   int64 end_vertex = 3;
   int64 end_vertex_region = 4;
+  string client_address = 5;
+  int64 client_number = 6;
 }
 
 message Address {

@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: db-connector
+  labels:
+    app.kubernetes.io/name: dbc-pod
+spec:
+  containers:
+  - name: main
+    image: eu.gcr.io/distributed-dijkstra/dbconnector@sha256:ef75c6165e05f52ccd6fbd9d61fd2e8f2539d876b4b2f2e9a4741bbdcccca737
+    ports:
+      - containerPort: 5005
+        name: dbc-port
+    command: ['sh', '-c', 'echo "dbconnenctor startoup" && python connector.py 10.12.0.3 5432&& echo "crash"']
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dbc-service
+spec:
+  selector:
+    app.kubernetes.io/name: dbc-pod
+  ports:
+  - name: dbc-pods
+    protocol: TCP
+    port: 5005
+    targetPort: dbc-port

@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: main
+  labels:
+    app.kubernetes.io/name: main-pod
+spec:
+  containers:
+  - name: main
+    image: eu.gcr.io/distributed-dijkstra/main@sha256:ee48dc78cbc5f9b5e0c24138cc214fd997a1e2cf3b52289d89e7af56eb49f7e0
+    ports:
+      - containerPort: 5001
+        name: main-port
+    command: ['sh','-c', './main ${DBC_SERVICE_SERVICE_HOST}:5005'] 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: main-service
+spec:
+  selector:
+    app.kubernetes.io/name: main-pod
+  ports:
+  - name: main-service-pods
+    protocol: TCP
+    port: 5001
+    targetPort: main-port

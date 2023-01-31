@@ -25,7 +25,7 @@ def get_neighbors():
     for v in adj.keys():
         for w in adj[v]:
             if region[v] != region[w]:
-                connections.add((min(region[v], region[w]), max(region[v], region[w])))
+                connections.add((region[v], region[w]))
 
 init_graph()
 get_neighbors()

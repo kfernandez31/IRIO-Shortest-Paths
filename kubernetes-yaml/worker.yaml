@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: workers
+  labels:
+    app: workers
+spec:
+  ports:
+  - port: 5002
+    name: workers
+  clusterIP: None
+  selector:
+    app: worker
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: workers
+spec:
+  selector:
+    matchLabels:
+      app: worker # has to match .spec.template.metadata.labels
+  serviceName: "workers"
+  replicas: 5 # by default is 1
+  minReadySeconds: 1 # by default is 0
+  template:
+    metadata:
+      labels:
+        app: worker # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: worker
+        image: eu.gcr.io/distributed-dijkstra/worker@sha256:713364293dccd3d21f6e35a7c64380545a6c3424c402440e339fdff9e02cf179
+        ports:
+        - containerPort: 80
+          name: web
+        env:
+        - name: MY_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        command : ["sh", "-c", "./worker ${MAIN_SERVICE_SERVICE_HOST}:5001 ${MY_IP}:5002 0.0.0.0:5002 ${DBC_SERVICE_SERVICE_HOST}:5005"]

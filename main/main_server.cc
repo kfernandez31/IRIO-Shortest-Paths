@@ -29,7 +29,7 @@ Status ShortestPathsMainServer::client_query(ServerContext *context, const Clien
     if (*phase_ == MainComputationPhase::WAIT_FOR_QUERY) {
         this->check_queries();
     }
-    std::cerr << "GOT NEW CLIENT QUERY" <<std::endl;
+    std::cout << "GOT NEW CLIENT QUERY" <<std::endl;
     return Status::OK;
 }
                                                                             // dostajemy adres klienta            odsyłamy numer regionu
@@ -45,10 +45,10 @@ Status ShortestPathsMainServer::hello_and_get_region(ServerContext *context, con
     if(worker_stubs_->size() == *region_number_ )
     {
         this->check_queries();
-        std::cerr << "WE HAVE FULL CREW LETS WAIT FOR QUERY"<<std::endl;
+        std::cout << "WE HAVE FULL CREW LETS WAIT FOR QUERY"<<std::endl;
     }
 
-    std::cerr << "ASSIGNED REGION " <<region << " TO :" << hello_request->addr() << std::endl;
+    std::cout << "ASSIGNED REGION " <<region << " TO :" << hello_request->addr() << std::endl;
 
     return Status::OK;
 }
@@ -77,7 +77,7 @@ Status ShortestPathsMainServer::end_of_local_phase(ServerContext *context, const
     if (*ended_phase_counter_ == *region_number_) {
         *ended_phase_counter_ = 0;   
         if (!*anything_to_send_) {
-            std::cerr << "Optimal solution found, beginning retrieving" << std::endl;
+            std::cout << "OPTIMAL SOLUTION FOUND" << std::endl;
             *phase_ = MainComputationPhase::RETRIEVE_PATH_MAIN;
             (*notification_counter_)++;
             cond_->notify_one();
@@ -115,9 +115,9 @@ Status ShortestPathsMainServer::end_of_exchange_phase(ServerContext *context, co
 void ShortestPathsMainServer::retrieve_path_main(){
     auto current_region = current_query_->end_vertex_region();
     auto current_vertex = current_query_->end_vertex();
+    auto client_address = current_query_->client_address();
     std::vector<std::pair<dist_t, vertex_id_t>> retrieved_path;
     retrieved_path.emplace_back(current_vertex, 0);
-    auto total_distance = 0;
     auto end = false;
     while (!end) {
         ClientContext context;
@@ -137,11 +137,28 @@ void ShortestPathsMainServer::retrieve_path_main(){
 
             current_region = next_region;
             current_vertex = next_vertex;
-            total_distance += next_distance;
             retrieved_path.emplace_back(next_vertex,next_distance);
         }
     }
-    std::cerr << "WHOLE PATH RETRIEVED " << total_distance << std::endl;
+
+    auto channel = grpc::CreateChannel(client_address, grpc::InsecureChannelCredentials());
+    auto stub = shortestpaths::ClientService::NewStub(channel);
+
+    ResultVector result_vector;
+    result_vector.set_client_number(current_query_->client_number());
+    result_vector.set_total_distance(retrieved_path[1].second);
+    for (size_t i=0;i<retrieved_path.size()-1;++i) {
+        ResultVertex* res_vertex = result_vector.add_verticies();
+        res_vertex->set_vertex_id(retrieved_path[i].first);
+        res_vertex->set_distance(retrieved_path[i+1].second);
+    }
+
+    ClientContext context;
+    Ok ok;
+    stub->send_result(&context, result_vector, &ok);
+
+
+    std::cout << "WHOLE PATH RETRIEVED LENGTH: " << retrieved_path[1].second << std::endl;
     for (auto const v: retrieved_path) {
         std::cout << v.first << " " << v.second << std::endl;
     }
@@ -159,7 +176,7 @@ void ShortestPathsMainServer::run(std::string db_address) {
     auto border_info = load_region_borders(db_address);
     while (!end)
     {
-        std::unique_lock<std::mutex> lock(*mutex_); //@todo 
+        std::unique_lock<std::mutex> lock(*mutex_);
         while (*notification_counter_ < 1) {
             cond_->wait(lock);
         }
@@ -183,14 +200,13 @@ void ShortestPathsMainServer::run(std::string db_address) {
                     new_job.set_end_vertex(end_vertex);
                     new_job.set_end_vertex_region(end_vertex_region);
                     new_job.set_is_first(start_vertex_region == worker.first);
-                    std::cerr <<worker.first <<" worker and is first "<< (start_vertex_region == worker.first) << std::endl;
-                    std::cerr << "tutaj" << new_job.is_first() << std::endl;
                     for (auto border : border_info[worker.first]) {
-                        std::cout << "border" << std::endl;
+                        std::cout << "ADDING BORDER BETWEEN REGIONS: " << worker.first << " " << border << std::endl;
                         auto info = new_job.add_neighbours();
                         info->set_address((*worker_stubs_)[border].second);
                         info->set_region_number(border);
                     }
+                    std::cout << "ADDED ALL BORDERS FOR REGION: " << worker.first << std::endl;
                     worker.second.first->begin_new_query(&context, new_job, &ok);
                 }
                 *phase_ = MainComputationPhase::WAIT_FOR_EXCHANGE;

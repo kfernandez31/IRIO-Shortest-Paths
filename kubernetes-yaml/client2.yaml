@@ -1,0 +1,13 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: xd
+spec:
+  template:
+    spec:
+      containers:
+      - name: xd
+        image: eu.gcr.io/distributed-dijkstra/client_test@sha256:c6429b5c36a636af20c4612988e0bb56df508f823e1e10ebda1f3f376dc5f961
+        command: ['sh', '-c', 'python client_test.py ${MAIN_SERVICE_SERVICE_HOST}:5001 1347559092 3 6759087298 0']
+      restartPolicy: Never
+  backoffLimit: 4
